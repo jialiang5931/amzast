@@ -1,14 +1,21 @@
 import React from 'react';
-import { ArrowLeft, Download, Table } from 'lucide-react';
+import { ArrowLeft, Download, Table, Search } from 'lucide-react';
 
 interface SearchListResultsProps {
     data: any[];
     onBack: () => void;
 }
 
+type SortConfig = {
+    key: string;
+    direction: 'asc' | 'desc' | null;
+};
+
 export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, onBack }) => {
+    const [searchTerm, setSearchTerm] = React.useState('');
+    const [sortConfig, setSortConfig] = React.useState<SortConfig>({ key: '', direction: null });
+
     // 1. Normalize both keys and limit rows
-    // We create a 'clean' version of the data where keys are trimmed and consistent
     const { displayData, processedData, allPossibleKeys } = React.useMemo(() => {
         const CHAR_MAP: Record<string, string> = { '，': ',', '：': ':', '；': ';' };
         const normalizeKey = (k: string) => {
@@ -30,7 +37,40 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, onBa
             return newRow;
         });
 
-        // Get all unique keys present in the normalized data
+        // Search/Filter logic
+        let filtered = normalized;
+        if (searchTerm.trim()) {
+            const term = searchTerm.toLowerCase();
+            filtered = normalized.filter(row =>
+                Object.values(row).some(val =>
+                    val?.toString().toLowerCase().includes(term)
+                )
+            );
+        }
+
+        // Sorting logic
+        if (sortConfig.key && sortConfig.direction) {
+            filtered = [...filtered].sort((a, b) => {
+                const aVal = a[sortConfig.key];
+                const bVal = b[sortConfig.key];
+
+                // Attempt numeric sort
+                const aNum = parseFloat(aVal?.toString().replace(/[^0-9.-]/g, ''));
+                const bNum = parseFloat(bVal?.toString().replace(/[^0-9.-]/g, ''));
+
+                if (!isNaN(aNum) && !isNaN(bNum)) {
+                    return sortConfig.direction === 'asc' ? aNum - bNum : bNum - aNum;
+                }
+
+                // Fallback to string sort
+                const aStr = aVal?.toString().toLowerCase() || '';
+                const bStr = bVal?.toString().toLowerCase() || '';
+                if (aStr < bStr) return sortConfig.direction === 'asc' ? -1 : 1;
+                if (aStr > bStr) return sortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+
         const keys = new Set<string>();
         normalized.forEach(row => {
             Object.keys(row).forEach(k => keys.add(k));
@@ -38,10 +78,10 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, onBa
 
         return {
             processedData: normalized,
-            displayData: normalized.slice(0, 500),
+            displayData: filtered.slice(0, 500),
             allPossibleKeys: Array.from(keys)
         };
-    }, [data]);
+    }, [data, searchTerm, sortConfig]);
 
     if (data.length === 0) {
         return (
@@ -109,6 +149,17 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, onBa
         return orderedHeaders;
     }, [originalHeaders]);
 
+    const handleSort = (key: string) => {
+        if (key === '序号' || key === '主图') return;
+        setSortConfig(prev => {
+            if (prev.key === key) {
+                if (prev.direction === 'asc') return { key, direction: 'desc' };
+                return { key: '', direction: null };
+            }
+            return { key, direction: 'asc' };
+        });
+    };
+
     const renderCell = (header: string, row: any, index: number) => {
         const val = row[header];
 
@@ -168,9 +219,9 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, onBa
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
-            {/* Action Bar - Permanently Shrunk for performance */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white/60 py-3 px-6 rounded-3xl backdrop-blur-xl border border-white/60 shadow-md -mx-2 sticky top-0 z-30">
-                <div className="flex items-center gap-4">
+            {/* Action Bar */}
+            <div className="flex flex-col lg:flex-row items-center justify-between gap-4 bg-white/60 py-3 px-6 rounded-3xl backdrop-blur-xl border border-white/60 shadow-md -mx-2 sticky top-0 z-30">
+                <div className="flex items-center gap-4 w-full lg:w-auto">
                     <button
                         onClick={onBack}
                         className="rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 transition-all border border-slate-200 p-1.5"
@@ -179,29 +230,45 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, onBa
                     </button>
                     <div className="transition-all duration-500">
                         <h3 className="font-bold text-slate-800 text-base">合并结果预览</h3>
-                        <p className="text-xs text-slate-400 font-medium">已合并 {data.length} 条数据</p>
+                        <p className="text-xs text-slate-400 font-medium whitespace-nowrap">共 {data.length} 条数据，当前显示前 {displayData.length} 条</p>
                     </div>
                 </div>
 
-                <button
-                    onClick={handleExport}
-                    disabled={isExporting}
-                    className={`flex items-center gap-2 px-6 py-2.5 rounded-2xl font-bold transition-all shadow-lg active:scale-95 disabled:opacity-70 ${isExporting
-                        ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
-                        : 'bg-blue-600 hover:bg-blue-700 text-white'
-                        }`}
-                >
-                    {isExporting ? (
-                        <>
-                            <div className="w-4 h-4 border-2 border-slate-500/30 border-t-slate-500 rounded-full animate-spin" />
-                            正在打包图片...
-                        </>
-                    ) : (
-                        <>
-                            <Download className="w-4 h-4" /> 下载搜索列表
-                        </>
-                    )}
-                </button>
+                <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+                    {/* Search Input */}
+                    <div className="relative w-full sm:w-64">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                            <Search className="w-4 h-4" />
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="搜索产品、ASIN 或关键词..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full bg-slate-100/50 border border-slate-200 pl-10 pr-4 py-2 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none"
+                        />
+                    </div>
+
+                    <button
+                        onClick={handleExport}
+                        disabled={isExporting}
+                        className={`w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2 rounded-2xl font-bold transition-all shadow-lg active:scale-95 disabled:opacity-70 ${isExporting
+                            ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
+                            : 'bg-blue-600 hover:bg-blue-700 text-white'
+                            }`}
+                    >
+                        {isExporting ? (
+                            <>
+                                <div className="w-4 h-4 border-2 border-slate-500/30 border-t-slate-500 rounded-full animate-spin" />
+                                正在打包图片...
+                            </>
+                        ) : (
+                            <>
+                                <Download className="w-4 h-4" /> 下载搜索列表
+                            </>
+                        )}
+                    </button>
+                </div>
             </div>
 
             {/* Table Container - Fixed Height */}
@@ -220,21 +287,34 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, onBa
                     <table className="w-auto text-left table-auto border-collapse">
                         <thead className="sticky top-0 z-20">
                             <tr className="bg-slate-50/95 backdrop-blur-md">
-                                {headers.map((header) => (
-                                    <th
-                                        key={header}
-                                        className="px-4 py-5 text-xl font-extrabold text-slate-800 uppercase tracking-wide border-b-2 border-slate-300 whitespace-nowrap w-px border-r border-slate-200/50"
-                                    >
-                                        {header}
-                                    </th>
-                                ))}
+                                {headers.map((header) => {
+                                    const isSorted = sortConfig.key === header;
+                                    return (
+                                        <th
+                                            key={header}
+                                            onClick={() => handleSort(header)}
+                                            className={`px-4 py-5 text-xl font-extrabold uppercase tracking-wide border-b-2 border-slate-300 whitespace-nowrap w-px border-r border-slate-200/50 transition-colors ${header !== '序号' && header !== '主图' ? 'cursor-pointer hover:bg-slate-100/80 active:bg-slate-200/50' : ''
+                                                } ${isSorted ? 'text-blue-600 bg-blue-50/30' : 'text-slate-800'}`}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                {header}
+                                                {header !== '序号' && header !== '主图' && (
+                                                    <div className="flex flex-col text-[10px] leading-[1]">
+                                                        <span className={isSorted && sortConfig.direction === 'asc' ? 'text-blue-600' : 'text-slate-300'}>▲</span>
+                                                        <span className={isSorted && sortConfig.direction === 'desc' ? 'text-blue-600' : 'text-slate-300'}>▼</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </th>
+                                    );
+                                })}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50/50">
                             {displayData.map((row, i) => (
                                 <tr
                                     key={i}
-                                    className="group even:bg-slate-100/60"
+                                    className="group even:bg-slate-100/60 hover:bg-blue-50/20 transition-colors"
                                 >
                                     {headers.map((header) => (
                                         <td key={`${i}-${header}`} className="px-4 py-3 text-lg text-slate-600 font-medium whitespace-nowrap max-w-[400px] border-r border-slate-100/30">
@@ -261,7 +341,6 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, onBa
                         if (el) {
                             const tableContainer = el.previousElementSibling as HTMLElement;
                             if (tableContainer) {
-                                // Update scroll position to match table container
                                 el.scrollLeft = tableContainer.scrollLeft;
                             }
                         }
@@ -270,7 +349,6 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, onBa
                     <div style={{ height: '12px', width: '100%', minWidth: 'max-content' }} />
                 </div>
             </div>
-
         </div>
     );
 };
