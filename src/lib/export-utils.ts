@@ -39,12 +39,29 @@ export async function exportToExcelWithImages(data: any[], filename: string, cus
             if (header === imageColName) {
                 // Use URL as initial value (will be cleared if image loads, or kept as fallback)
                 rowValues[header] = rowData['商品主图'] || rowData['imageUrl'] || rowData['image'] || '';
+            } else if (header.toUpperCase() === 'ASIN') {
+                const asinVal = rowData[header];
+                const asinLink = rowData['商品详情页链接'] || rowData['url'];
+                if (asinLink && asinLink !== '#') {
+                    rowValues[header] = { text: asinVal, hyperlink: asinLink, tooltip: '点击前往 Amazon 查看商品详情' };
+                } else {
+                    rowValues[header] = asinVal;
+                }
             } else {
                 rowValues[header] = rowData[header];
             }
         });
 
         const excelRow = worksheet.addRow(rowValues);
+
+        // Style ASIN Link
+        const asinColIndex = headers.findIndex(h => h.toUpperCase() === 'ASIN');
+        if (asinColIndex !== -1) {
+            const cell = excelRow.getCell(asinColIndex + 1);
+            if (cell.value && typeof cell.value === 'object' && (cell.value as any).hyperlink) {
+                cell.font = { color: { argb: 'FF0000FF' }, underline: true };
+            }
+        }
 
         // Initial height (standard)
         // If we have an image, we'll increase it
