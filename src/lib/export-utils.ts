@@ -1,33 +1,42 @@
 import ExcelJS from 'exceljs';
 
-export async function exportToExcelWithImages(data: any[], filename: string, customHeaders?: string[]) {
+export async function exportToExcelWithImages(
+    data: any[],
+    filename: string,
+    headers: string[],
+    site: string = 'US'
+) {
     if (!data || data.length === 0) return;
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Search List');
 
-    // Determine Headers
-    let headers: string[];
     const imageColName = '主图';
 
-    if (customHeaders && customHeaders.length > 0) {
-        headers = [...customHeaders];
-    } else {
-        const originalHeaders = Object.keys(data[0]);
-        headers = [...originalHeaders];
-        const asinIndex = headers.findIndex(key => key.toUpperCase() === 'ASIN');
+    // Setup Columns with dynamic width based on header length
+    worksheet.columns = headers.map(header => {
+        let width: number;
 
-        if (asinIndex !== -1 && !headers.includes(imageColName)) {
-            headers.splice(asinIndex + 1, 0, imageColName);
+        if (header === imageColName) {
+            width = 15; // Fixed width for image column
+        } else {
+            // Calculate width based on header text length
+            // Chinese characters are wider, so we count them as 2 units
+            const chineseCharCount = (header.match(/[\u4e00-\u9fa5]/g) || []).length;
+            const otherCharCount = header.length - chineseCharCount;
+            const estimatedWidth = chineseCharCount * 2 + otherCharCount * 1.2;
+
+            // Set min and max width constraints
+            width = Math.max(8, Math.min(estimatedWidth + 4, 40));
         }
-    }
 
-    // Setup Columns
-    worksheet.columns = headers.map(header => ({
-        header: header,
-        key: header,
-        width: header === imageColName ? 15 : 25, // Width for image column vs others
-    }));
+        return {
+            header: header,
+            key: header,
+            width: width,
+        };
+    });
+
 
     // Process Rows
     for (let i = 0; i < data.length; i++) {
@@ -47,21 +56,62 @@ export async function exportToExcelWithImages(data: any[], filename: string, cus
                 } else {
                     rowValues[header] = asinVal;
                 }
+            } else if (header === '品牌' || header.toLowerCase() === 'brand') {
+                const brandVal = rowData[header];
+                const brandLink = rowData['品牌链接'];
+                if (brandLink && brandLink !== '#') {
+                    rowValues[header] = { text: brandVal, hyperlink: brandLink, tooltip: '点击查看品牌页面' };
+                } else {
+                    const val = brandVal;
+                    rowValues[header] = (val === null || val === undefined || val === '') ? '-' : val;
+                }
+            } else if (header === 'BuyBox卖家') {
+                const sellerVal = rowData[header];
+                const sellerLink = rowData['卖家首页'];
+                if (sellerLink && sellerLink !== '#') {
+                    rowValues[header] = { text: sellerVal, hyperlink: sellerLink, tooltip: '点击查看卖家首页' };
+                } else {
+                    const val = sellerVal;
+                    rowValues[header] = (val === null || val === undefined || val === '') ? '-' : val;
+                }
+            } else if (header === '自然排名') {
+                const rankVal = rowData[header];
+                const asin = rowData['ASIN'] || rowData['asin'];
+                if (rankVal && asin) {
+                    const rankLink = `https://www.xiyouzhaoci.com/detail/asin/look_up/${site}/${asin}`;
+                    rowValues[header] = { text: rankVal, hyperlink: rankLink, tooltip: '点击前往西柚找词查看排名详情' };
+                } else {
+                    const val = rankVal;
+                    rowValues[header] = (val === null || val === undefined || val === '') ? '-' : val;
+                }
             } else {
-                rowValues[header] = rowData[header];
+                const val = rowData[header];
+                // Display '-' for empty, null, or undefined values
+                rowValues[header] = (val === null || val === undefined || val === '') ? '-' : val;
             }
         });
 
         const excelRow = worksheet.addRow(rowValues);
 
-        // Style ASIN Link
-        const asinColIndex = headers.findIndex(h => h.toUpperCase() === 'ASIN');
-        if (asinColIndex !== -1) {
-            const cell = excelRow.getCell(asinColIndex + 1);
-            if (cell.value && typeof cell.value === 'object' && (cell.value as any).hyperlink) {
-                cell.font = { color: { argb: 'FF0000FF' }, underline: true };
+        // Style hyperlinks for ASIN, Brand, Seller, and Natural Rank columns
+        // Apply black color with underline for all hyperlinks
+        const hyperlinkColumns = [
+            { name: 'ASIN', matcher: (h: string) => h.toUpperCase() === 'ASIN' },
+            { name: '品牌', matcher: (h: string) => h === '品牌' || h.toLowerCase() === 'brand' },
+            { name: 'BuyBox卖家', matcher: (h: string) => h === 'BuyBox卖家' },
+            { name: '自然排名', matcher: (h: string) => h === '自然排名' }
+        ];
+
+        hyperlinkColumns.forEach(({ matcher }) => {
+            const colIndex = headers.findIndex(matcher);
+            if (colIndex !== -1) {
+                const cell = excelRow.getCell(colIndex + 1);
+                if (cell.value && typeof cell.value === 'object' && (cell.value as any).hyperlink) {
+                    cell.font = { color: { argb: 'FF000000' }, underline: true }; // Black with underline
+                }
             }
-        }
+        });
+
 
         // Initial height (standard)
         // If we have an image, we'll increase it
@@ -70,7 +120,7 @@ export async function exportToExcelWithImages(data: any[], filename: string, cus
         if (imgUrl) {
             try {
                 // Set row height to accommodate image (visual tweak)
-                excelRow.height = 100; // ~133px height
+                excelRow.height = 80; // ~106px height, just enough for 100px image
 
                 // Fetch Image
                 const response = await fetch(imgUrl, { mode: 'cors' });
@@ -107,14 +157,14 @@ export async function exportToExcelWithImages(data: any[], filename: string, cus
                 excelRow.getCell(colIndex + 1).alignment = { vertical: 'middle', horizontal: 'center' };
 
             } catch (err) {
-                console.warn(`Failed to embed image for ASIN row ${i}:`, err);
+                console.warn(`Failed to embed image for ASIN row ${i}: `, err);
                 // Keep the URL text in the cell as fallback
             }
         }
 
-        // Align other cells vertically middle
+        // Align other cells vertically middle and center
         excelRow.eachCell((cell) => {
-            cell.alignment = { ...cell.alignment, vertical: 'middle' };
+            cell.alignment = { ...cell.alignment, vertical: 'middle', horizontal: 'center' };
         });
     }
 

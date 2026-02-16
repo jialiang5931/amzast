@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import type { RawAmazonRow, ParsedData } from './types';
+import type { RawAmazonRow, ParsedData, MergedSearchListData } from './types';
 
 /**
  * Parses the uploaded Excel file and returns row data.
@@ -138,7 +138,7 @@ export async function parseExcel(file: File): Promise<ParsedData> {
 /**
  * Identifies and merges "Product", "Keyword", and "Sales" files based on ASIN.
  */
-export async function mergeSearchListData(files: File[]): Promise<any[]> {
+export async function mergeSearchListData(files: File[]): Promise<MergedSearchListData> {
     // 1. Identify Files
     const productFile = files.find(f =>
         /^Product-[a-z]{2,}-\d{4,}\.xlsx$/i.test(f.name) &&
@@ -256,7 +256,11 @@ export async function mergeSearchListData(files: File[]): Promise<any[]> {
         if (asin) keywordMap.set(asin.toString(), row);
     });
 
-    return productData.map(pRow => {
+    // Extract station (marketplace) from product filename
+    const productMatch = productFile.name.match(/^Product-([a-z]{2,})-\d{4,}\.xlsx$/i);
+    const station = productMatch ? productMatch[1].toUpperCase() : '';
+
+    const mergedRows = productData.map(pRow => {
         const asin = pRow['ASIN'] || pRow['asin'];
         if (!asin) return pRow;
 
@@ -264,9 +268,8 @@ export async function mergeSearchListData(files: File[]): Promise<any[]> {
         const kRow = keywordMap.get(asinStr) || {};
         const sRow = salesDataMap.get(asinStr) || {};
 
-        // Merge Priority: Product > Sales > Keyword (or distinct columns)
-        // Spread order: existing pRow, then kRow, then sRow.
-        // sales columns are distinct (suffixed), keyword columns usually distinct.
         return { ...pRow, ...kRow, ...sRow };
     });
+
+    return { rows: mergedRows, site: station };
 }

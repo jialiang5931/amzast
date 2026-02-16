@@ -1,11 +1,12 @@
 import React, { useRef, useState } from 'react';
-import { ArrowLeft, Download, Table, Search, Maximize2, ChevronUp, X } from 'lucide-react';
+import { ArrowLeft, Download, Table, Search, Maximize2, ChevronUp, X, Copy, Check } from 'lucide-react';
 import { PriceHistoryChart } from './charts/PriceHistoryChart';
 import { TrendHistoryChart } from './charts/TrendHistoryChart';
 import { createPortal } from 'react-dom';
 
 interface SearchListResultsProps {
     data: any[];
+    site?: string;
     onBack: () => void;
 }
 
@@ -14,10 +15,54 @@ type SortConfig = {
     direction: 'asc' | 'desc' | null;
 };
 
-export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, onBack }) => {
+const AsinCell: React.FC<{ val: string; row: any }> = ({ val, row }) => {
+    const [copied, setCopied] = React.useState(false);
+    const link = row['商品详情页链接'] || row['url'] || '#';
+
+    const handleCopy = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        navigator.clipboard.writeText(val);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    return (
+        <div className="flex items-center justify-center gap-1 group/asin relative">
+            <a
+                href={link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-slate-900 underline decoration-slate-300 hover:decoration-blue-600 hover:text-blue-600 transition-colors font-medium text-[13px] flex items-center gap-0.5 group/link"
+                onClick={(e) => e.stopPropagation()}
+            >
+                {val}
+                <ArrowLeft className="w-2 h-2 rotate-135 opacity-0 group-hover/link:opacity-100 transition-opacity" />
+            </a>
+            <button
+                onClick={handleCopy}
+                className={`p-1 rounded-md transition-all flex-shrink-0 ${copied
+                    ? 'text-green-500 bg-green-50 scale-110'
+                    : 'text-slate-300 hover:text-slate-500 hover:bg-slate-100 opacity-40 hover:opacity-100'
+                    }`}
+                title={copied ? "已复制" : "点击复制 ASIN"}
+            >
+                {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+            </button>
+            {copied && (
+                <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] px-2 py-1 rounded shadow-xl whitespace-nowrap animate-in fade-in slide-in-from-bottom-2 z-50">
+                    复制成功
+                </div>
+            )}
+        </div>
+    );
+};
+
+
+export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site = 'US', onBack }) => {
     const [searchTerm, setSearchTerm] = React.useState('');
     const [sortConfig, setSortConfig] = React.useState<SortConfig>({ key: '', direction: null });
-    const [visibleCount, setVisibleCount] = React.useState(100);
+    const [visibleCount, setVisibleCount] = React.useState(500);
     const [isHeaderExpanded, setIsHeaderExpanded] = React.useState(true);
 
     // Hover state for Trend History (Price or Sales)
@@ -96,6 +141,23 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, onBa
                     newRow['上架时段'] = period;
                 }
             }
+
+            // Logic for Shipping Method (配送方式)
+            // If "配送方式" is FBM, then "FBA" should display "FBM"
+            const shippingMethod = row['配送方式'];
+            if (shippingMethod && shippingMethod.toString().trim().toUpperCase() === 'FBM') {
+                // Find which key corresponds to FBA in newRow
+                // It could be 'FBA', 'FBA费用', or 'FBA Fee' (after normalization)
+                const fbaKeys = ['FBA', 'FBA费用', 'FBA Fee'];
+                for (const fbaKey of fbaKeys) {
+                    if (newRow[fbaKey] !== undefined) {
+                        newRow[fbaKey] = 'FBM';
+                    }
+                }
+                // If neither exists but we want to ensure it shows up correctly if FBA column is present
+                // The priorityGroups logic handles which one is actually shown.
+            }
+
             return newRow;
         });
     }, [data]);
@@ -290,19 +352,7 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, onBa
         }
 
         if (header.toUpperCase() === 'ASIN') {
-            const link = row['商品详情页链接'] || row['url'] || '#';
-            return (
-                <a
-                    href={link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-slate-900 underline decoration-slate-300 hover:decoration-blue-600 hover:text-blue-600 transition-colors font-medium flex items-center justify-center gap-1 group/link"
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    {val}
-                    <ArrowLeft className="w-2.5 h-2.5 rotate-135 opacity-0 group-hover/link:opacity-100 transition-opacity" />
-                </a>
-            );
+            return <AsinCell val={val} row={row} />;
         }
 
         if (header === '主图') {
@@ -359,6 +409,23 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, onBa
             }
         }
 
+        if (header === '自然排名') {
+            const asin = row['ASIN'] || row['asin'];
+            const rankingLink = `https://www.xiyouzhaoci.com/detail/asin/look_up/${site}/${asin}`;
+            return (
+                <a
+                    href={rankingLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-slate-900 underline decoration-slate-300 hover:decoration-blue-600 hover:text-blue-600 transition-colors font-medium truncate block"
+                    onClick={(e) => e.stopPropagation()}
+                    title={displayVal}
+                >
+                    {displayVal}
+                </a>
+            );
+        }
+
         return (
             <span
                 className={`${isBrand ? 'line-clamp-2 whitespace-normal break-words leading-tight' : 'truncate block'}`}
@@ -389,7 +456,61 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, onBa
         try {
             const { exportToExcelWithImages } = await import('../lib/export-utils');
             const filename = `merged_search_list_${new Date().toISOString().split('T')[0]}.xlsx`;
-            await exportToExcelWithImages(normalizedData, filename, headers);
+
+            // Start with visible headers (excluding 序号)
+            const exportHeaders = headers.filter(h => h !== '序号');
+
+            // Find "父ASIN" or "Parent ASIN" to insert extra columns after it
+            const parentAsinIndex = exportHeaders.findIndex(h => h === '父ASIN' || h === 'Parent ASIN');
+            const extraColumns = ['商品标题', 'Coupon', '商品主图'];
+
+            if (parentAsinIndex !== -1) {
+                exportHeaders.splice(parentAsinIndex + 1, 0, ...extraColumns);
+            } else {
+                // Fallback: append at the end of visible headers if Parent ASIN not found
+                exportHeaders.push(...extraColumns);
+            }
+
+            // Extract all historical data columns from normalizedData
+            const historicalPattern = /^(\d{4})-(\d{2})-([父子])-(U|M|P)$/;
+            const historicalColumns = new Set<string>();
+
+            normalizedData.forEach(row => {
+                Object.keys(row).forEach(key => {
+                    if (historicalPattern.test(key)) {
+                        historicalColumns.add(key);
+                    }
+                });
+            });
+
+            // Sort historical columns: group by suffix first, then by date descending within each group
+            const suffixOrder = ['-父-U', '-父-M', '-子-U', '-子-M', '-子-P'];
+            const sortedHistorical = Array.from(historicalColumns).sort((a, b) => {
+                const matchA = a.match(historicalPattern);
+                const matchB = b.match(historicalPattern);
+
+                if (!matchA || !matchB) return 0;
+
+                const dateA = `${matchA[1]}-${matchA[2]}`;
+                const dateB = `${matchB[1]}-${matchB[2]}`;
+                const suffixA = `-${matchA[3]}-${matchA[4]}`;
+                const suffixB = `-${matchB[3]}-${matchB[4]}`;
+
+                // First, sort by suffix order
+                const indexA = suffixOrder.indexOf(suffixA);
+                const indexB = suffixOrder.indexOf(suffixB);
+                if (indexA !== indexB) {
+                    return indexA - indexB;
+                }
+
+                // Within same suffix, sort by date descending (newest first)
+                return dateB.localeCompare(dateA);
+            });
+
+            // Append historical columns to export headers
+            const finalHeaders = [...exportHeaders, ...sortedHistorical];
+
+            await exportToExcelWithImages(normalizedData, filename, finalHeaders, site);
         } catch (error) {
             console.error('Export failed:', error);
             alert('导出失败，请检查网络或重试');
@@ -397,6 +518,7 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, onBa
             setIsExporting(false);
         }
     };
+
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
@@ -446,6 +568,21 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, onBa
                                     <X className="w-3.5 h-3.5" />
                                 </button>
                             )}
+                        </div>
+
+                        {/* Data Statistics */}
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100/50 rounded-xl border border-slate-200/50 text-[11px] font-bold text-slate-500 whitespace-nowrap">
+                            <Table className="w-3 h-3 text-blue-500" />
+                            <span>
+                                {deferredSearchTerm ? (
+                                    <>已筛选 <span className="text-blue-600">{filteredData.length}</span> / {normalizedData.length} 条</>
+                                ) : (
+                                    <>共 <span className="text-blue-600">{normalizedData.length}</span> 条产品</>
+                                )}
+                                {displayData.length < sortedData.length && (
+                                    <span className="ml-1 text-slate-400 font-medium">(显示前 {displayData.length} 条)</span>
+                                )}
+                            </span>
                         </div>
 
                         <button
@@ -520,12 +657,22 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, onBa
                                     const isTraffic = header === '自然:广告';
                                     const isSeller = header === 'BuyBox卖家';
                                     const isMainImage = header === '主图';
+
                                     return (
                                         <th
                                             key={header}
                                             onClick={() => handleSort(header)}
                                             className={`px-4 py-5 font-extrabold uppercase tracking-wide border-b-2 border-slate-300 border-r border-slate-200/50 transition-colors ${header !== '序号' && header !== '主图' ? 'cursor-pointer hover:bg-slate-100/80 active:bg-slate-200/50' : ''
-                                                } ${isSorted ? 'text-blue-600 bg-blue-50/30' : 'text-slate-800'} ${isBrand ? 'w-[140px] min-w-[140px] max-w-[140px] !whitespace-normal text-xl' : 'whitespace-nowrap w-px'} ${isIndex ? 'text-sm' : 'text-xl'} ${isAsin ? 'w-[120px] min-w-[120px] max-w-[120px] text-center' : ''} ${isMainImage ? 'text-center min-w-[150px]' : ''} ${isPeriod ? 'w-[100px] min-w-[100px] max-w-[100px] text-center' : ''} ${isRank ? 'w-[100px] min-w-[100px] max-w-[100px] text-center' : ''} ${isTraffic ? 'w-[120px] min-w-[120px] max-w-[120px] text-center' : ''} ${isSeller ? 'w-[120px] min-w-[120px] max-w-[120px] !whitespace-normal' : ''} ${header === '价格' || header === 'Price' ? 'relative overflow-visible z-20' : ''}`}
+                                                } ${isSorted ? 'text-blue-600 bg-blue-50/30' : 'text-slate-800'
+                                                } ${isBrand ? 'w-[140px] min-w-[140px] max-w-[140px] !whitespace-normal text-xl' : 'whitespace-nowrap w-px'
+                                                } ${isIndex ? 'text-sm' : 'text-xl'
+                                                } ${isAsin ? 'w-[120px] min-w-[120px] max-w-[120px] text-center' : ''
+                                                } ${isMainImage ? 'text-center min-w-[150px]' : ''
+                                                } ${isPeriod ? 'w-[100px] min-w-[100px] max-w-[100px] text-center' : ''
+                                                } ${isRank ? 'w-[100px] min-w-[100px] max-w-[100px] text-center' : ''
+                                                } ${isTraffic ? 'w-[120px] min-w-[120px] max-w-[120px] text-center' : ''
+                                                } ${isSeller ? 'w-[120px] min-w-[120px] max-w-[120px] !whitespace-normal' : ''
+                                                } ${header === '价格' || header === 'Price' ? 'relative overflow-visible z-20' : ''}`}
                                         >
                                             <div className={`flex items-center gap-2 ${isAsin || isPeriod || isRank || isTraffic || isMainImage ? 'justify-center' : ''}`}>
                                                 {header}
@@ -551,8 +698,8 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, onBa
                                         key={i}
                                         onClick={() => toggleRowSelection(asin)}
                                         className={`group transition-colors cursor-pointer ${isSelected
-                                                ? 'bg-[#eff5ff] hover:bg-[#eff5ff]'
-                                                : 'even:bg-slate-100/60 hover:bg-blue-50/20'
+                                            ? 'bg-[#eff5ff] hover:bg-[#eff5ff]'
+                                            : 'even:bg-slate-100/60 hover:bg-blue-50/20'
                                             }`}
                                     >
                                         {visibleHeaders.map((header) => {

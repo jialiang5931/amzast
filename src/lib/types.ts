@@ -62,3 +62,8 @@ export interface ParsedData {
     monthlyData: YearlyTrendData[];
     brandData: BrandSharePoint[];
 }
+
+export interface MergedSearchListData {
+    rows: any[];
+    site: string;
+}

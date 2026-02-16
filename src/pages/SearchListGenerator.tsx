@@ -8,6 +8,7 @@ export const SearchListGenerator: React.FC = () => {
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [isGenerating, setIsGenerating] = useState(false);
     const [mergedData, setMergedData] = useState<any[] | null>(null);
+    const [site, setSite] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
 
     const handleFilesChange = (files: File[]) => {
@@ -22,8 +23,10 @@ export const SearchListGenerator: React.FC = () => {
         setError(null);
 
         try {
-            const data = await mergeSearchListData(selectedFiles);
-            setMergedData(data);
+            const { rows, site: identifiedSite } = await mergeSearchListData(selectedFiles);
+            setMergedData(rows);
+            setSite(identifiedSite);
+            console.log(`[SearchList] Identified Marketplace: ${identifiedSite}`);
         } catch (err: any) {
             console.error("[SearchList] Merge Error:", err);
             setError(err.message || '合并文件时发生未知错误');
@@ -34,12 +37,13 @@ export const SearchListGenerator: React.FC = () => {
 
     const handleBack = () => {
         setMergedData(null);
+        setSite('');
     };
 
     if (mergedData) {
         return (
             <div className="w-full h-full p-6">
-                <SearchListResults data={mergedData} onBack={handleBack} />
+                <SearchListResults data={mergedData} site={site} onBack={handleBack} />
             </div>
         );
     }
