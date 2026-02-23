@@ -90,8 +90,15 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 export function PriceScatterChart({ data }: PriceScatterChartProps) {
-    const defaultMaxPrice = Math.max(...data.map(d => d.price)) * 1.1 || 100;
-    const defaultMaxUnits = Math.max(...data.map(d => d.units)) * 1.1 || 100;
+    // 安全计算：空数组时 Math.max(...[]) = -Infinity，需加保护
+    const defaultMaxPrice = useMemo(() => {
+        if (data.length === 0) return 100;
+        return Math.max(...data.map(d => d.price)) * 1.1 || 100;
+    }, [data]);
+    const defaultMaxUnits = useMemo(() => {
+        if (data.length === 0) return 100;
+        return Math.max(...data.map(d => d.units)) * 1.1 || 100;
+    }, [data]);
 
     const [xDomain, setXDomain] = useState<[number, number]>([0, defaultMaxPrice]);
     const [yDomain, setYDomain] = useState<[number, number]>([0, defaultMaxUnits]);
@@ -182,6 +189,12 @@ export function PriceScatterChart({ data }: PriceScatterChartProps) {
             window.removeEventListener('mouseup', handleMouseUp);
         };
     }, [handleMouseMove, handleMouseUp]);
+
+    // 当 data 变化时（如外部筛选），同步重置视图域
+    useEffect(() => {
+        setXDomain([0, defaultMaxPrice]);
+        setYDomain([0, defaultMaxUnits]);
+    }, [defaultMaxPrice, defaultMaxUnits]);
 
     const resetZoom = useCallback(() => {
         setXDomain([0, defaultMaxPrice]);

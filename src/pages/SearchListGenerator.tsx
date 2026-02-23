@@ -24,6 +24,11 @@ export const SearchListGenerator: React.FC<SearchListGeneratorProps> = ({
     const [site, setSite] = useState<string>(persistedSite);
     const [error, setError] = useState<string | null>(null);
 
+    // 当父组件的 persistedSite 变化时（如 tab 切换），同步到本地 state
+    React.useEffect(() => {
+        setSite(persistedSite);
+    }, [persistedSite]);
+
     const handleFilesChange = (files: File[]) => {
         setSelectedFiles(files);
         setError(null);

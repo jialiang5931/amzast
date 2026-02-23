@@ -4,7 +4,7 @@ import { MonthlySalesChart } from '../components/charts/MonthlySalesChart';
 import { PriceScatterChart } from '../components/charts/PriceScatterChart';
 import { BrandBarChart } from '../components/charts/BrandBarChart';
 import { BrandProductList } from '../components/charts/BrandProductList';
-import { ArrowLeft, LayoutDashboard, BarChart3, Binary, Sparkles, FileSpreadsheet } from 'lucide-react';
+import { ArrowLeft, BarChart3, Binary, Sparkles, FileSpreadsheet } from 'lucide-react';
 import type { ParsedData } from '../lib/types';
 
 interface MarketAnalysisProps {

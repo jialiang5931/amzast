@@ -2,26 +2,28 @@ import * as XLSX from 'xlsx';
 import type { RawAmazonRow, ParsedData, MergedSearchListData } from './types';
 
 /**
+ * 根据列名优先级解析应使用哪一列作为「子体销量」来源。
+ * 优先级: 子体销量 > 最新 YYYY-MM-子-U > 子体历史月销量 > 近30天销量 > 父体销量
+ */
+function resolveUnitsKey(allKeys: string[]): string {
+    const subItemSalesColumns = allKeys.filter(key => /^\d{4}-\d{2}-子-U$/.test(key));
+    if (allKeys.includes('子体销量')) return '子体销量';
+    if (subItemSalesColumns.length > 0) return subItemSalesColumns.sort().reverse()[0];
+    if (allKeys.includes('子体历史月销量')) return '子体历史月销量';
+    if (allKeys.includes('近30天销量')) return '近30天销量';
+    if (allKeys.includes('父体销量')) return '父体销量';
+    return '';
+}
+
+/**
  * Transforms raw rows into structured data for charts.
  */
 export function processRawRows(jsonData: any[]): ParsedData {
     const allKeys = jsonData.length > 0 ? Object.keys(jsonData[0]) : [];
 
-    // Prioritize "YYYY-MM-子-U" (Sub-item Sales from Exported Search List)
-    // Fallback to "YYYY-MM" (Parent Sales from Raw Product File)
+    // 使用统一的优先级解析函数
     const subItemSalesColumns = allKeys.filter(key => /^\d{4}-\d{2}-子-U$/.test(key));
-
-    // Determine the best column for "Sub-item Sales" based on priority (Global for this function)
-    let unitsKey = '';
-    if (allKeys.includes('子体销量')) {
-        unitsKey = '子体销量';
-    } else if (subItemSalesColumns.length > 0) {
-        unitsKey = subItemSalesColumns.sort().reverse()[0];
-    } else if (allKeys.includes('子体历史月销量')) {
-        unitsKey = '子体历史月销量';
-    } else {
-        unitsKey = allKeys.includes('近30天销量') ? '近30天销量' : (allKeys.includes('父体销量') ? '父体销量' : '');
-    }
+    let unitsKey = resolveUnitsKey(allKeys);
 
     // Transform data for Scatter Chart
     const scatterData = jsonData
@@ -100,27 +102,10 @@ export function processRawRows(jsonData: any[]): ParsedData {
         })
     })).sort((a, b) => a.year.localeCompare(b.year));
 
-    // Transform data for Brand Monopoly Chart
+    // Transform data for Brand Monopoly Chart（复用统一优先级函数）
     const brandSalesMap: Record<string, number> = {};
     let totalUnits = 0;
-
-    // Priority 1: "子体销量" (Standard exported column)
-    if (allKeys.includes('子体销量')) {
-        unitsKey = '子体销量';
-    }
-    // Priority 2: Latest "YYYY-MM-子-U"
-    else if (subItemSalesColumns.length > 0) {
-        // Find the latest month column
-        unitsKey = subItemSalesColumns.sort().reverse()[0];
-    }
-    // Priority 3: "子体历史月销量"
-    else if (allKeys.includes('子体历史月销量')) {
-        unitsKey = '子体历史月销量';
-    }
-    // Fallback: "近30天销量" or "父体销量"
-    else {
-        unitsKey = allKeys.includes('近30天销量') ? '近30天销量' : (allKeys.includes('父体销量') ? '父体销量' : '');
-    }
+    unitsKey = resolveUnitsKey(allKeys);
 
     jsonData.forEach(row => {
         const brand = row['品牌'] || 'Unknown';
@@ -175,7 +160,7 @@ export async function parseExcel(file: File): Promise<ParsedData> {
 
                 resolve(processRawRows(jsonData));
             } catch (err) {
-                console.error("[DataParser] Error paring file:", err);
+                console.error("[DataParser] Error parsing file:", err);
                 reject(err);
             }
         };

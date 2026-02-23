@@ -19,7 +19,7 @@ type SortConfig = {
 
 const AsinCell: React.FC<{ val: string; row: any; onRemove: (asin: string) => void }> = ({ val, row, onRemove }) => {
     const [copied, setCopied] = React.useState(false);
-    const link = row['商品详情页链接'] || row['url'] || '#';
+    const link = row['商品详情页链�?] || row['url'] || '#';
 
     const handleCopy = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -38,7 +38,7 @@ const AsinCell: React.FC<{ val: string; row: any; onRemove: (asin: string) => vo
                     onRemove(val);
                 }}
                 className="p-1 rounded-md text-slate-300 hover:text-slate-500 hover:bg-slate-100 opacity-0 group-hover/asin:opacity-100 transition-all flex-shrink-0"
-                title="删除该产品"
+                title="删除该产�?
             >
                 <X className="w-3.5 h-3.5" />
             </button>
@@ -58,7 +58,7 @@ const AsinCell: React.FC<{ val: string; row: any; onRemove: (asin: string) => vo
                     ? 'text-green-500 bg-green-50 scale-110'
                     : 'text-slate-300 hover:text-slate-500 hover:bg-slate-100 opacity-40 hover:opacity-100'
                     }`}
-                title={copied ? "已复制" : "点击复制 ASIN"}
+                title={copied ? "已复�? : "点击复制 ASIN"}
             >
                 {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
             </button>
@@ -73,7 +73,37 @@ const AsinCell: React.FC<{ val: string; row: any; onRemove: (asin: string) => vo
 
 
 // Columns that are collapsed by default
-const DETAIL_COLUMNS = ['包装尺寸分段', '商品重量', '商品尺寸', '包装重量', '包装尺寸', '类目路径', '大类目', '小类目', '父ASIN'];
+const DETAIL_COLUMNS = ['包装尺寸分段', '商品重量', '商品尺寸', '包装重量', '包装尺寸', '类目路径', '大类�?, '小类�?, '父ASIN'];
+
+// 优先列顺序定义（模块级常量，避免每次渲染重建�?
+const PRIORITY_GROUPS: string[][] = [
+    ['序号'],
+    ['ASIN'],
+    ['主图'],
+    ['价格', 'Price'],
+    ['子体销�?, '子体历史月销�?, 'Sub-item Sales'],
+    ['父体销�?, '月销�?, '月度销�?, '�?0天销�?, 'Monthly Sales'],
+    ['变体�?, '变体', 'Variations'],
+    ['评分�?, '评论�?, 'Reviews'],
+    ['评分', 'Rating'],
+    ['上架时段'],
+    ['上架时间', 'Date First Available'],
+    ['品牌', 'Brand'],
+    ['自然排名'],
+    ['自然:广告'],
+    ['卖家', 'BuyBox卖家'],
+    ['卖家所属地'],
+    ['FBA', 'FBA费用', 'FBA Fee'],
+    ['包装尺寸分段'],
+    ['商品重量'],
+    ['商品尺寸'],
+    ['包装重量'],
+    ['包装尺寸'],
+    ['类目路径'],
+    ['大类�?],
+    ['小类�?],
+    ['父ASIN', 'Parent ASIN']
+];
 
 export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site = 'US', onBack, onRemoveRow, onGenerateMarketAnalysis }) => {
     const [searchTerm, setSearchTerm] = React.useState('');
@@ -95,7 +125,7 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
 
     // 🚀 Performance: Step 1 - Normalize data (only when raw data changes)
     const normalizedData = React.useMemo(() => {
-        const CHAR_MAP: Record<string, string> = { '，': ',', '：': ':', '；': ';' };
+        const CHAR_MAP: Record<string, string> = { '�?: ',', '�?: ':', '�?: ';' };
         const normalizeKey = (k: string) => {
             const s = k.toString().trim().replace(/[\u200B-\u200D\uFEFF]/g, '');
             if (!s) return '';
@@ -115,8 +145,8 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
                     cleanKey = '自然排名';
                 }
                 // Specific rename for Monthly Sales
-                if (cleanKey === '月销量') {
-                    cleanKey = '父体销量';
+                if (cleanKey === '月销�?) {
+                    cleanKey = '父体销�?;
                 }
 
                 // Specific rename for Unit Conversions
@@ -151,7 +181,7 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
                     const now = new Date();
                     const diffMonths = (now.getFullYear() - listingDate.getFullYear()) * 12 + (now.getMonth() - listingDate.getMonth());
 
-                    let period = '1年+';
+                    let period = '1�?';
                     if (diffMonths <= 3) period = '3个月';
                     else if (diffMonths <= 6) period = '6个月';
                     else if (diffMonths <= 9) period = '9个月';
@@ -161,9 +191,9 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
                 }
             }
 
-            // Logic for Shipping Method (配送方式)
-            // If "配送方式" is FBM, then "FBA" should display "FBM"
-            const shippingMethod = row['配送方式'];
+            // Logic for Shipping Method (配送方�?
+            // If "配送方�? is FBM, then "FBA" should display "FBM"
+            const shippingMethod = row['配送方�?];
             if (shippingMethod && shippingMethod.toString().trim().toUpperCase() === 'FBM') {
                 // Find which key corresponds to FBA in newRow
                 // It could be 'FBA', 'FBA费用', or 'FBA Fee' (after normalization)
@@ -241,7 +271,7 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
                 <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto text-slate-300">
                     <Table className="w-8 h-8" />
                 </div>
-                <p className="text-slate-500 font-medium">未找到可合并的数据，请检查 ASIN 是否匹配。</p>
+                <p className="text-slate-500 font-medium">未找到可合并的数据，请检�?ASIN 是否匹配�?/p>
                 <button onClick={onBack} className="text-blue-600 font-semibold hover:underline">返回上传</button>
             </div>
         );
@@ -249,53 +279,21 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
 
     const originalHeaders = allPossibleKeys;
 
-    // Define priority column groups to ensure only ONE match per category is added
-    const priorityGroups = [
-        ['序号'],
-        ['ASIN'],
-        ['主图'],
-        ['价格', 'Price'],
-        ['子体销量', '子体历史月销量', 'Sub-item Sales'],
-        ['父体销量', '月销量', '月度销量', '近30天销量', 'Monthly Sales'],
-        ['变体数', '变体', 'Variations'],
-        ['评分数', '评论数', 'Reviews'],
-        ['评分', 'Rating'],
-        ['上架时段'],
-        ['上架时间', 'Date First Available'],
-        ['品牌', 'Brand'],
-        ['自然排名'],
-        ['自然:广告'],
-        ['卖家', 'BuyBox卖家'],
-        ['卖家所属地'],
-        ['FBA', 'FBA费用', 'FBA Fee'],
-        ['包装尺寸分段'],
-        ['商品重量'],
-        ['商品尺寸'],
-        ['包装重量'],
-        ['包装尺寸'],
-        ['类目路径'],
-        ['大类目'],
-        ['小类目'],
-        ['父ASIN', 'Parent ASIN']
-    ];
-
     const headers = React.useMemo(() => {
         const normalizeForMatch = (s: string) => s.toString().trim().replace(/\s+/g, '').toLowerCase()
-            .replace(/[（【［(]/g, '').replace(/[）】］)]/g, '').replace(/(\$|￥)/g, '');
+            .replace(/[（【［(]/g, '').replace(/[）】］)]/g, '').replace(/(\$|�?/g, '');
 
         const remainingHeaders = new Set(originalHeaders);
         const orderedHeaders: string[] = [];
 
-        // 1. Process priority groups
-        priorityGroups.forEach(group => {
+        // 使用模块级常�?PRIORITY_GROUPS，按优先级排列列�?
+        PRIORITY_GROUPS.forEach(group => {
             if (group[0] === '序号' || group[0] === '主图') {
                 orderedHeaders.push(group[0]);
                 return;
             }
 
-            // Find the first member of the group that exists in the data
             let categoryMatched = false;
-
             for (const priorityName of group) {
                 const normP = normalizeForMatch(priorityName);
                 const found = Array.from(remainingHeaders).find(h => normalizeForMatch(h) === normP);
@@ -304,43 +302,10 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
                         orderedHeaders.push(found);
                         categoryMatched = true;
                     }
-                    remainingHeaders.delete(found); // Remove ALL variants of this category from remaining
+                    remainingHeaders.delete(found);
                 }
             }
         });
-
-        // 2. Add remaining columns (already filtered of system ones in memo 1)
-        // const suffixOrder = ['-父-U', '-父-M', '-子-U', '-子-M', '-子-P'];
-        // const sortedRemaining = Array.from(remainingHeaders).sort((a: string, b: string) => {
-        //     const datePattern = /^(\d{4}-\d{2})/;
-        //     const matchA = a.match(datePattern);
-        //     const matchB = b.match(datePattern);
-
-        //     if (matchA && matchB) {
-        //         const suffixA = a.replace(matchA[1], '');
-        //         const suffixB = b.replace(matchB[1], '');
-        //         const indexA = suffixOrder.indexOf(suffixA);
-        //         const indexB = suffixOrder.indexOf(suffixB);
-
-        //         // Sort by suffix priority first
-        //         if (indexA !== indexB) {
-        //             if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-        //             if (indexA !== -1) return -1;
-        //             if (indexB !== -1) return 1;
-        //         }
-
-        //         // Then by date (Reverse Chronological)
-        //         return matchB[1].localeCompare(matchA[1]);
-        //     }
-
-        //     // Dates go after non-date columns
-        //     if (matchA) return 1;
-        //     if (matchB) return -1;
-
-        //     return a.localeCompare(b);
-        // });
-
-        // orderedHeaders.push(...sortedRemaining);
 
         return orderedHeaders;
     }, [originalHeaders]);
@@ -512,7 +477,7 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
             });
 
             // Sort historical columns: group by suffix first, then by date descending within each group
-            const suffixOrder = ['-父-U', '-父-M', '-子-U', '-子-M', '-子-P'];
+            const suffixOrder = ['-�?U', '-�?M', '-�?U', '-�?M', '-�?P'];
             const sortedHistorical = Array.from(historicalColumns).sort((a, b) => {
                 const matchA = a.match(historicalPattern);
                 const matchB = b.match(historicalPattern);
@@ -571,7 +536,7 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
                         </button>
                         <div className="transition-all duration-500">
                             <h3 className="font-bold text-slate-800 text-base">合并结果预览</h3>
-                            <p className="text-xs text-slate-400 font-medium whitespace-nowrap">共 {sortedData.length} 条数据，当前显示前 {displayData.length} 条</p>
+                            <p className="text-xs text-slate-400 font-medium whitespace-nowrap">�?{sortedData.length} 条数据，当前显示�?{displayData.length} �?/p>
                         </div>
                     </div>
 
@@ -603,12 +568,12 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
                             <Table className="w-3 h-3 text-blue-500" />
                             <span>
                                 {deferredSearchTerm ? (
-                                    <>已筛选 <span className="text-blue-600">{filteredData.length}</span> / {normalizedData.length} 条</>
+                                    <>已筛�?<span className="text-blue-600">{filteredData.length}</span> / {normalizedData.length} �?/>
                                 ) : (
-                                    <>共 <span className="text-blue-600">{normalizedData.length}</span> 条产品</>
+                                    <>�?<span className="text-blue-600">{normalizedData.length}</span> 条产�?/>
                                 )}
                                 {displayData.length < sortedData.length && (
-                                    <span className="ml-1 text-slate-400 font-medium">(显示前 {displayData.length} 条)</span>
+                                    <span className="ml-1 text-slate-400 font-medium">(显示�?{displayData.length} �?</span>
                                 )}
                             </span>
                         </div>
@@ -659,7 +624,7 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
                         ) : (
                             <>
                                 <Maximize2 className="w-3 h-3" />
-                                <span>点击展开搜索与下载</span>
+                                <span>点击展开搜索与下�?/span>
                             </>
                         )}
                     </div>
@@ -692,7 +657,7 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
                                             >
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); setIsDetailColumnsExpanded(v => !v); }}
-                                                    title={isDetailColumnsExpanded ? '折叠详情列' : '展开详情列'}
+                                                    title={isDetailColumnsExpanded ? '折叠详情�? : '展开详情�?}
                                                     className="flex items-center justify-center w-6 h-6 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
                                                 >
                                                     {isDetailColumnsExpanded
@@ -733,8 +698,8 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
                                                 {header}
                                                 {header !== '序号' && header !== '主图' && (
                                                     <div className="flex flex-col text-[10px] leading-[1]">
-                                                        <span className={isSorted && sortConfig.direction === 'asc' ? 'text-blue-600' : 'text-slate-300'}>▲</span>
-                                                        <span className={isSorted && sortConfig.direction === 'desc' ? 'text-blue-600' : 'text-slate-300'}>▼</span>
+                                                        <span className={isSorted && sortConfig.direction === 'asc' ? 'text-blue-600' : 'text-slate-300'}>�?/span>
+                                                        <span className={isSorted && sortConfig.direction === 'desc' ? 'text-blue-600' : 'text-slate-300'}>�?/span>
                                                     </div>
                                                 )}
                                             </div>
@@ -750,7 +715,7 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
 
                                 return (
                                     <tr
-                                        key={i}
+                                        key={asin}
                                         onClick={() => toggleRowSelection(asin)}
                                         className={`group transition-colors cursor-pointer ${isSelected
                                             ? 'bg-[#eff5ff] hover:bg-[#eff5ff]'
@@ -785,8 +750,8 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
                                                         }`}
                                                     onMouseEnter={(e) => {
                                                         const isPrice = header === '价格' || header === 'Price';
-                                                        const isChildSales = ['子体销量', '子体历史月销量', 'Sub-item Sales'].includes(header);
-                                                        const isParentSales = ['父体销量', '月销量', '月度销量', '近30天销量', 'Monthly Sales'].includes(header);
+                                                        const isChildSales = ['子体销�?, '子体历史月销�?, 'Sub-item Sales'].includes(header);
+                                                        const isParentSales = ['父体销�?, '月销�?, '月度销�?, '�?0天销�?, 'Monthly Sales'].includes(header);
 
                                                         if (isPrice || isChildSales || isParentSales) {
                                                             const rect = e.currentTarget.getBoundingClientRect();
@@ -802,8 +767,8 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
                                                     }}
                                                     onMouseLeave={() => {
                                                         const isPrice = header === '价格' || header === 'Price';
-                                                        const isChildSales = ['子体销量', '子体历史月销量', 'Sub-item Sales'].includes(header);
-                                                        const isParentSales = ['父体销量', '月销量', '月度销量', '近30天销量', 'Monthly Sales'].includes(header);
+                                                        const isChildSales = ['子体销�?, '子体历史月销�?, 'Sub-item Sales'].includes(header);
+                                                        const isParentSales = ['父体销�?, '月销�?, '月度销�?, '�?0天销�?, 'Monthly Sales'].includes(header);
 
                                                         if (isPrice || isChildSales || isParentSales) {
                                                             hoverTimeoutRef.current = setTimeout(() => {
@@ -855,7 +820,7 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
                             className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-2xl shadow-lg hover:shadow-xl transition-all active:scale-95 flex items-center gap-2"
                         >
                             <span>加载更多</span>
-                            <span className="text-xs opacity-80">(还有 {sortedData.length - displayData.length} 条)</span>
+                            <span className="text-xs opacity-80">(还有 {sortedData.length - displayData.length} �?</span>
                         </button>
                     </div>
                 )
@@ -889,14 +854,14 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
                             ) : hoveredChartData.type === 'sales' ? (
                                 <TrendHistoryChart
                                     data={hoveredChartData.data}
-                                    dataKeyPattern={/^(\d{4})-(\d{2})-子-U$/}
-                                    title="子体月销量趋势 (近三年对比)"
+                                    dataKeyPattern={/^(\d{4})-(\d{2})-�?U$/}
+                                    title="子体月销量趋�?(近三年对�?"
                                 />
                             ) : (
                                 <TrendHistoryChart
                                     data={hoveredChartData.data}
-                                    dataKeyPattern={/^(\d{4})-(\d{2})-父-U$/}
-                                    title="父体销量趋势 (近三年对比)"
+                                    dataKeyPattern={/^(\d{4})-(\d{2})-�?U$/}
+                                    title="父体销量趋�?(近三年对�?"
                                 />
                             )}
                         </div>
