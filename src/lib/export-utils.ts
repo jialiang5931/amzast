@@ -65,7 +65,7 @@ export async function exportToExcelWithImages(
                     const val = brandVal;
                     rowValues[header] = (val === null || val === undefined || val === '') ? '-' : val;
                 }
-            } else if (header === 'BuyBox卖家') {
+            } else if (header === '卖家') {
                 const sellerVal = rowData[header];
                 const sellerLink = rowData['卖家首页'];
                 if (sellerLink && sellerLink !== '#') {
@@ -98,7 +98,7 @@ export async function exportToExcelWithImages(
         const hyperlinkColumns = [
             { name: 'ASIN', matcher: (h: string) => h.toUpperCase() === 'ASIN' },
             { name: '品牌', matcher: (h: string) => h === '品牌' || h.toLowerCase() === 'brand' },
-            { name: 'BuyBox卖家', matcher: (h: string) => h === 'BuyBox卖家' },
+            { name: '卖家', matcher: (h: string) => h === '卖家' },
             { name: '自然排名', matcher: (h: string) => h === '自然排名' }
         ];
 

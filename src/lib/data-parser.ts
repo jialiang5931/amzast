@@ -2,6 +2,154 @@ import * as XLSX from 'xlsx';
 import type { RawAmazonRow, ParsedData, MergedSearchListData } from './types';
 
 /**
+ * Transforms raw rows into structured data for charts.
+ */
+export function processRawRows(jsonData: any[]): ParsedData {
+    const allKeys = jsonData.length > 0 ? Object.keys(jsonData[0]) : [];
+
+    // Prioritize "YYYY-MM-子-U" (Sub-item Sales from Exported Search List)
+    // Fallback to "YYYY-MM" (Parent Sales from Raw Product File)
+    const subItemSalesColumns = allKeys.filter(key => /^\d{4}-\d{2}-子-U$/.test(key));
+
+    // Determine the best column for "Sub-item Sales" based on priority (Global for this function)
+    let unitsKey = '';
+    if (allKeys.includes('子体销量')) {
+        unitsKey = '子体销量';
+    } else if (subItemSalesColumns.length > 0) {
+        unitsKey = subItemSalesColumns.sort().reverse()[0];
+    } else if (allKeys.includes('子体历史月销量')) {
+        unitsKey = '子体历史月销量';
+    } else {
+        unitsKey = allKeys.includes('近30天销量') ? '近30天销量' : (allKeys.includes('父体销量') ? '父体销量' : '');
+    }
+
+    // Transform data for Scatter Chart
+    const scatterData = jsonData
+        .filter(row => (row['价格'] != null || row['Price'] != null) && (unitsKey && row[unitsKey] != null))
+        .map(row => {
+            const val = unitsKey ? row[unitsKey] : 0;
+            const units = typeof val === 'number' ? val : (Number(val?.toString().replace(/[^0-9.-]/g, '')) || 0);
+
+            return {
+                price: Number(row['价格'] || row['Price']),
+                units: units,
+                brand: row['品牌'] || 'Unknown',
+                launchDate: row['上架时间'],
+                url: row['商品详情页链接'] || row['url'],
+                asin: row['ASIN'],
+                title: row['商品标题'],
+                imageUrl: row['首图链接'] || row['商品主图'] || row['imageUrl'],
+                rating: row['评分'],
+                reviewCount: row['评分数'],
+                coupon: row['Coupon']
+            };
+        });
+
+    // Transform data for Monthly Sales Chart
+    // Prioritize "YYYY-MM-子-U" (Sub-item Sales from Exported Search List)
+    // Fallback to "YYYY-MM" (Parent Sales from Raw Product File)
+    const rawMonthlyColumns = allKeys.filter(key => /^\d{4}-\d{2}$/.test(key));
+
+    const isUsingSubItemSales = subItemSalesColumns.length > 0;
+    const monthlyColumns = isUsingSubItemSales ? subItemSalesColumns : rawMonthlyColumns;
+
+    const yearlyMap: Record<string, Record<number, number>> = {};
+
+    monthlyColumns.forEach(col => {
+        const datePart = col.split('-').slice(0, 2).join('-'); // Get YYYY-MM
+        const [year, monthStr] = datePart.split('-');
+        const month = parseInt(monthStr, 10);
+
+        if (!yearlyMap[year]) yearlyMap[year] = {};
+        if (!yearlyMap[year][month]) yearlyMap[year][month] = 0;
+
+        const seenParentAsins = new Set<string>();
+
+        jsonData.forEach(row => {
+            const parentAsin = row['父ASIN'] || row['ASIN'] || row['Parent ASIN'];
+            const val = row[col];
+
+            if (val != null && val !== "") {
+                const numVal = Number(val.toString().replace(/[^0-9.-]/g, ''));
+                if (isNaN(numVal)) return;
+
+                if (isUsingSubItemSales) {
+                    // For sub-item sales, we sum ALL rows (no Parent ASIN de-duplication)
+                    // because each sub-item row is unique.
+                    yearlyMap[year][month] += numVal;
+                } else {
+                    // For raw monthly columns, we only count each Parent ASIN once per month
+                    if (!seenParentAsins.has(parentAsin)) {
+                        yearlyMap[year][month] += numVal;
+                        seenParentAsins.add(parentAsin);
+                    }
+                }
+            }
+        });
+    });
+
+    const monthlyData = Object.entries(yearlyMap).map(([year, months]) => ({
+        year,
+        data: Array.from({ length: 12 }, (_, i) => {
+            const month = i + 1;
+            const dataPoint = months[month];
+            return {
+                month,
+                units: dataPoint !== undefined ? dataPoint : null
+            };
+        })
+    })).sort((a, b) => a.year.localeCompare(b.year));
+
+    // Transform data for Brand Monopoly Chart
+    const brandSalesMap: Record<string, number> = {};
+    let totalUnits = 0;
+
+    // Priority 1: "子体销量" (Standard exported column)
+    if (allKeys.includes('子体销量')) {
+        unitsKey = '子体销量';
+    }
+    // Priority 2: Latest "YYYY-MM-子-U"
+    else if (subItemSalesColumns.length > 0) {
+        // Find the latest month column
+        unitsKey = subItemSalesColumns.sort().reverse()[0];
+    }
+    // Priority 3: "子体历史月销量"
+    else if (allKeys.includes('子体历史月销量')) {
+        unitsKey = '子体历史月销量';
+    }
+    // Fallback: "近30天销量" or "父体销量"
+    else {
+        unitsKey = allKeys.includes('近30天销量') ? '近30天销量' : (allKeys.includes('父体销量') ? '父体销量' : '');
+    }
+
+    jsonData.forEach(row => {
+        const brand = row['品牌'] || 'Unknown';
+        const val = unitsKey ? row[unitsKey] : 0;
+        const units = typeof val === 'number' ? val : (Number(val?.toString().replace(/[^0-9.-]/g, '')) || 0);
+
+        brandSalesMap[brand] = (brandSalesMap[brand] || 0) + units;
+        totalUnits += units;
+    });
+
+    const brandData = Object.entries(brandSalesMap)
+        .map(([brand, units]) => ({
+            brand,
+            units,
+            percentage: totalUnits > 0 ? (units / totalUnits) * 100 : 0
+        }))
+        .sort((a, b) => b.units - a.units)
+        .slice(0, 20); // Top 20 brands
+
+    return {
+        rows: jsonData,
+        totalRows: jsonData.length,
+        scatterData,
+        monthlyData,
+        brandData
+    };
+}
+
+/**
  * Parses the uploaded Excel file and returns row data.
  * Keeps all raw keys from the Excel file (Chinese headers).
  */
@@ -22,103 +170,10 @@ export async function parseExcel(file: File): Promise<ParsedData> {
 
                 // Parse to JSON directly using first row as headers
                 const jsonData = XLSX.utils.sheet_to_json<RawAmazonRow>(worksheet, {
-                    defval: null, // Use null for empty cells
+                    defval: "", // Use empty string for empty cells
                 });
 
-                // Transform data for Scatter Chart
-                const scatterData = jsonData
-                    .filter(row => row['价格'] != null && row['近30天销量'] != null)
-                    .map(row => ({
-                        price: Number(row['价格']),
-                        units: Number(row['近30天销量']),
-                        brand: row['品牌'] || 'Unknown',
-                        launchDate: row['上架时间'],
-                        url: row['商品详情页链接'],
-                        asin: row['ASIN'],
-                        title: row['商品标题'],
-                        imageUrl: row['首图链接'],
-                        rating: row['评分'],
-                        reviewCount: row['评分数'],
-                        coupon: row['Coupon']
-                    }));
-
-                // Transform data for Monthly Sales Chart
-                // 1. Identify monthly columns (format: YYYY-MM)
-                const allKeys = jsonData.length > 0 ? Object.keys(jsonData[0]) : [];
-                const monthlyColumns = allKeys.filter(key => /^\d{4}-\d{2}$/.test(key));
-
-                // 2. Aggregate data
-                // Structure: { [year]: { [month]: Set<ParentASIN | ASIN> } } to handle "count only once"
-                // Actually, the user says "count once", I'll assume it means sum the sales value but only once per Parent ASIN per month.
-                // Wait, if two product rows have same Parent ASIN, do we sum their individual sales for that month? 
-                // "在统计每一个月的总销量时，同个“父ASIN”的数据只统计一次，也就是说有可能出现两个产品同属于一个父ASIN。这个时候只统计一次。"
-                // This implies if we see the same Parent ASIN again, we don't add it again. 
-                // Usually, the monthly columns in these reports are already aggregated at some level, or they are per-SKU.
-                // I will use a Map to keep track of seen Parent ASINs per month to avoid double counting.
-
-                const yearlyMap: Record<string, Record<number, number>> = {};
-
-                monthlyColumns.forEach(col => {
-                    const [year, monthStr] = col.split('-');
-                    const month = parseInt(monthStr, 10);
-                    if (!yearlyMap[year]) yearlyMap[year] = {};
-                    if (!yearlyMap[year][month]) yearlyMap[year][month] = 0;
-
-                    const seenParentAsins = new Set<string>();
-
-                    jsonData.forEach(row => {
-                        const parentAsin = row['父ASIN'] || row['ASIN'];
-                        const val = row[col];
-
-                        if (val != null && !seenParentAsins.has(parentAsin)) {
-                            yearlyMap[year][month] += Number(val);
-                            seenParentAsins.add(parentAsin);
-                        }
-                    });
-                });
-
-                const monthlyData = Object.entries(yearlyMap).map(([year, months]) => ({
-                    year,
-                    data: Array.from({ length: 12 }, (_, i) => {
-                        const month = i + 1;
-                        const colName = `${year}-${month.toString().padStart(2, '0')}`;
-                        const isPresent = monthlyColumns.includes(colName);
-                        return {
-                            month,
-                            units: isPresent ? (months[month] || 0) : null
-                        };
-                    })
-                })).sort((a, b) => a.year.localeCompare(b.year));
-
-                // Transform data for Brand Monopoly Chart
-                const brandSalesMap: Record<string, number> = {};
-                let totalUnits = 0;
-
-                jsonData.forEach(row => {
-                    const brand = row['品牌'] || 'Unknown';
-                    const units = Number(row['近30天销量']) || 0;
-                    brandSalesMap[brand] = (brandSalesMap[brand] || 0) + units;
-                    totalUnits += units;
-                });
-
-                const brandData = Object.entries(brandSalesMap)
-                    .map(([brand, units]) => ({
-                        brand,
-                        units,
-                        percentage: totalUnits > 0 ? (units / totalUnits) * 100 : 0
-                    }))
-                    .sort((a, b) => b.units - a.units)
-                    .slice(0, 20); // Top 20 brands
-
-                console.log(`[DataParser] Parsed ${jsonData.length} rows, ${monthlyColumns.length} months, ${brandData.length} brands`);
-
-                resolve({
-                    rows: jsonData,
-                    totalRows: jsonData.length,
-                    scatterData,
-                    monthlyData,
-                    brandData
-                });
+                resolve(processRawRows(jsonData));
             } catch (err) {
                 console.error("[DataParser] Error paring file:", err);
                 reject(err);

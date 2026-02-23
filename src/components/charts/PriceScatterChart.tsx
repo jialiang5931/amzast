@@ -66,7 +66,7 @@ const CustomTooltip = ({ active, payload }: any) => {
                             )}
 
                             <div className="flex items-center justify-between text-xs">
-                                <span className="text-slate-600">近30天销量:</span>
+                                <span className="text-slate-600">子体销量:</span>
                                 <span className="font-semibold text-emerald-600">{data.units}</span>
                             </div>
 
@@ -257,7 +257,7 @@ export function PriceScatterChart({ data }: PriceScatterChartProps) {
                             tickFormatter={formatAxisNumber}
                             allowDataOverflow
                         >
-                            <Label value="近30天销量" angle={-90} position="insideLeft" fill="#64748b" style={{ textAnchor: 'middle', fontSize: '12px', fontWeight: 500 }} />
+                            <Label value="子体销量" angle={-90} position="insideLeft" fill="#64748b" style={{ textAnchor: 'middle', fontSize: '12px', fontWeight: 500 }} />
                         </YAxis>
                         <Tooltip
                             content={<CustomTooltip />}

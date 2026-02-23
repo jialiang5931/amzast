@@ -4,11 +4,24 @@ import { SearchListResults } from '../components/SearchListResults';
 import { mergeSearchListData } from '../lib/data-parser';
 import { Play, Sparkles, FileText, Settings2, AlertCircle } from 'lucide-react';
 
-export const SearchListGenerator: React.FC = () => {
+interface SearchListGeneratorProps {
+    persistedData: any[] | null;
+    persistedSite: string;
+    onDataChange: (rows: any[] | null, site: string) => void;
+    onRemoveRow: (asin: string) => void;
+    onGenerateMarketAnalysis: (rows: any[], site: string) => void;
+}
+
+export const SearchListGenerator: React.FC<SearchListGeneratorProps> = ({
+    persistedData,
+    persistedSite,
+    onDataChange,
+    onRemoveRow,
+    onGenerateMarketAnalysis
+}) => {
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [isGenerating, setIsGenerating] = useState(false);
-    const [mergedData, setMergedData] = useState<any[] | null>(null);
-    const [site, setSite] = useState<string>('');
+    const [site, setSite] = useState<string>(persistedSite);
     const [error, setError] = useState<string | null>(null);
 
     const handleFilesChange = (files: File[]) => {
@@ -24,8 +37,8 @@ export const SearchListGenerator: React.FC = () => {
 
         try {
             const { rows, site: identifiedSite } = await mergeSearchListData(selectedFiles);
-            setMergedData(rows);
             setSite(identifiedSite);
+            onDataChange(rows, identifiedSite);
             console.log(`[SearchList] Identified Marketplace: ${identifiedSite}`);
         } catch (err: any) {
             console.error("[SearchList] Merge Error:", err);
@@ -36,14 +49,20 @@ export const SearchListGenerator: React.FC = () => {
     };
 
     const handleBack = () => {
-        setMergedData(null);
         setSite('');
+        onDataChange(null, '');
     };
 
-    if (mergedData) {
+    if (persistedData) {
         return (
-            <div className="w-full h-full p-6">
-                <SearchListResults data={mergedData} site={site} onBack={handleBack} />
+            <div className="w-full h-full p-0">
+                <SearchListResults
+                    data={persistedData}
+                    site={site}
+                    onBack={handleBack}
+                    onRemoveRow={onRemoveRow}
+                    onGenerateMarketAnalysis={() => onGenerateMarketAnalysis(persistedData, site)}
+                />
             </div>
         );
     }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { parseExcel } from './lib/data-parser';
 import type { ParsedData } from './lib/types';
 import { Sidebar } from './components/layout/Sidebar';
@@ -12,6 +12,23 @@ function App() {
   const [file, setFile] = useState<File | null>(null);
   const [data, setData] = useState<ParsedData | null>(null);
   const [isParsing, setIsParsing] = useState(false);
+
+  // 滚动位置恢复：记录搜索列表离开时的滚动位置
+  const mainRef = useRef<HTMLElement>(null);
+  const searchScrollY = useRef<number>(0);
+
+  useEffect(() => {
+    if (activeTab === 'search') {
+      // 等待组件渲染完成后再恢复位置
+      requestAnimationFrame(() => {
+        mainRef.current?.scrollTo({ top: searchScrollY.current, behavior: 'instant' });
+      });
+    }
+  }, [activeTab]);
+
+  // Search List Persisted State
+  const [searchListData, setSearchListData] = useState<any[] | null>(null);
+  const [searchListSite, setSearchListSite] = useState<string>('');
 
   const handleFileUpload = async (uploadedFile: File) => {
     setFile(uploadedFile);
@@ -32,6 +49,34 @@ function App() {
     setFile(null);
   };
 
+  // Direct transfer from Search List to Market Analysis
+  const handleGenerateMarketAnalysis = async (rows: any[], site: string) => {
+    setIsParsing(true);
+    setActiveTab('market');
+    try {
+      // Create a virtual file object to represent the transferred data
+      const virtualFile = new File([], `SearchList_${site}_${new Date().toISOString().split('T')[0]}.xlsx`);
+      setFile(virtualFile);
+
+      // Process the rows through the standard parser logic to get charts
+      const { processRawRows } = await import('./lib/data-parser');
+      const parsed = processRawRows(rows);
+      setData(parsed);
+    } catch (error) {
+      console.error("Transfer failed:", error);
+      alert("生成报告失败。");
+    } finally {
+      setIsParsing(false);
+    }
+  };
+
+  const handleRemoveSearchListRow = (asin: string) => {
+    setSearchListData(prev => {
+      if (!prev) return null;
+      return prev.filter(row => (row['ASIN'] || row['asin']) !== asin);
+    });
+  };
+
   const renderContent = () => {
     switch (activeTab) {
       case 'home':
@@ -44,10 +89,23 @@ function App() {
             isParsing={isParsing}
             onFileUpload={handleFileUpload}
             onClear={handleClear}
+            hasSearchListData={!!searchListData}
+            onBackToSearch={() => setActiveTab('search')}
           />
         );
       case 'search':
-        return <SearchListGenerator />;
+        return (
+          <SearchListGenerator
+            persistedData={searchListData}
+            persistedSite={searchListSite}
+            onDataChange={(rows, site) => {
+              setSearchListData(rows);
+              setSearchListSite(site);
+            }}
+            onRemoveRow={handleRemoveSearchListRow}
+            onGenerateMarketAnalysis={handleGenerateMarketAnalysis}
+          />
+        );
       default:
         return (
           <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
@@ -77,7 +135,15 @@ function App() {
 
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
 
-      <main className={`flex-1 h-screen overflow-y-auto relative ${activeTab === 'search' ? 'p-0' : 'py-6'}`}>
+      <main
+        ref={mainRef}
+        className={`flex-1 h-screen overflow-y-auto relative ${activeTab === 'search' ? 'p-0' : 'py-6'}`}
+        onScroll={(e) => {
+          if (activeTab === 'search') {
+            searchScrollY.current = (e.target as HTMLElement).scrollTop;
+          }
+        }}
+      >
         <div className={`h-full ${activeTab === 'search' ? 'w-full' : 'container mx-auto max-w-7xl'}`}>
           {renderContent()}
         </div>

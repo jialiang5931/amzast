@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { ArrowLeft, Download, Table, Search, Maximize2, ChevronUp, X, Copy, Check } from 'lucide-react';
+import { ArrowLeft, Download, Table, Search, Maximize2, ChevronUp, X, Copy, Check, ChevronsRight, ChevronsLeft } from 'lucide-react';
 import { PriceHistoryChart } from './charts/PriceHistoryChart';
 import { TrendHistoryChart } from './charts/TrendHistoryChart';
 import { createPortal } from 'react-dom';
@@ -8,6 +8,8 @@ interface SearchListResultsProps {
     data: any[];
     site?: string;
     onBack: () => void;
+    onRemoveRow: (asin: string) => void;
+    onGenerateMarketAnalysis: () => void;
 }
 
 type SortConfig = {
@@ -15,7 +17,7 @@ type SortConfig = {
     direction: 'asc' | 'desc' | null;
 };
 
-const AsinCell: React.FC<{ val: string; row: any }> = ({ val, row }) => {
+const AsinCell: React.FC<{ val: string; row: any; onRemove: (asin: string) => void }> = ({ val, row, onRemove }) => {
     const [copied, setCopied] = React.useState(false);
     const link = row['商品详情页链接'] || row['url'] || '#';
 
@@ -29,6 +31,17 @@ const AsinCell: React.FC<{ val: string; row: any }> = ({ val, row }) => {
 
     return (
         <div className="flex items-center justify-center gap-1 group/asin relative">
+            <button
+                onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    onRemove(val);
+                }}
+                className="p-1 rounded-md text-slate-300 hover:text-slate-500 hover:bg-slate-100 opacity-0 group-hover/asin:opacity-100 transition-all flex-shrink-0"
+                title="删除该产品"
+            >
+                <X className="w-3.5 h-3.5" />
+            </button>
             <a
                 href={link}
                 target="_blank"
@@ -59,11 +72,15 @@ const AsinCell: React.FC<{ val: string; row: any }> = ({ val, row }) => {
 };
 
 
-export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site = 'US', onBack }) => {
+// Columns that are collapsed by default
+const DETAIL_COLUMNS = ['包装尺寸分段', '商品重量', '商品尺寸', '包装重量', '包装尺寸', '类目路径', '大类目', '小类目', '父ASIN'];
+
+export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site = 'US', onBack, onRemoveRow, onGenerateMarketAnalysis }) => {
     const [searchTerm, setSearchTerm] = React.useState('');
     const [sortConfig, setSortConfig] = React.useState<SortConfig>({ key: '', direction: null });
     const [visibleCount, setVisibleCount] = React.useState(500);
     const [isHeaderExpanded, setIsHeaderExpanded] = React.useState(true);
+    const [isDetailColumnsExpanded, setIsDetailColumnsExpanded] = useState(false);
 
     // Hover state for Trend History (Price or Sales)
     const [hoveredChartData, setHoveredChartData] = useState<{
@@ -107,6 +124,8 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
                 if (cleanKey === '商品尺寸(单位换算)') cleanKey = '商品尺寸';
                 if (cleanKey === '包装重量(单位换算)') cleanKey = '包装重量';
                 if (cleanKey === '包装尺寸(单位换算)') cleanKey = '包装尺寸';
+                // Specific rename for Seller column
+                if (cleanKey === 'BuyBox卖家') cleanKey = '卖家';
 
                 if (cleanKey && !cleanKey.startsWith('__EMPTY') && !cleanKey.toLowerCase().includes('unnamed')) {
                     newRow[cleanKey] = row[key];
@@ -246,7 +265,7 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
         ['品牌', 'Brand'],
         ['自然排名'],
         ['自然:广告'],
-        ['BuyBox卖家'],
+        ['卖家', 'BuyBox卖家'],
         ['卖家所属地'],
         ['FBA', 'FBA费用', 'FBA Fee'],
         ['包装尺寸分段'],
@@ -326,15 +345,24 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
         return orderedHeaders;
     }, [originalHeaders]);
 
-    // Derived list for UI display: Hide historical data columns (YYYY-MM-*)
-    // Since we now only include explicitly listed columns, this filter is technically redundant but harmless if we keep it for safety or future dynamic columns.
-    // However, if we want to ensure history columns are NOT in the UI even if they were accidentally matched, we keep it.
-    // Given the task is to "remove columns not in the list", and history columns are NOT in the list, they are already gone from `headers`.
-    // We can just use headers directly, or keep visibleHeaders as an alias.
-    const visibleHeaders = headers;
+    // visibleHeaders: filter detail columns when collapsed, then inject __TOGGLE__ button after FBA
+    const visibleHeaders = React.useMemo(() => {
+        const filtered = isDetailColumnsExpanded
+            ? headers
+            : headers.filter(h => !DETAIL_COLUMNS.includes(h));
+
+        // Insert __TOGGLE__ virtual column right after the FBA column
+        const fbaIdx = filtered.findIndex(h => ['FBA', 'FBA费用', 'FBA Fee'].includes(h));
+        if (fbaIdx !== -1) {
+            const result = [...filtered];
+            result.splice(fbaIdx + 1, 0, '__TOGGLE__');
+            return result;
+        }
+        return filtered;
+    }, [headers, isDetailColumnsExpanded]);
 
     const handleSort = (key: string) => {
-        if (key === '序号' || key === '主图') return;
+        if (key === '序号' || key === '主图' || key === '__TOGGLE__') return;
         setSortConfig(prev => {
             if (prev.key === key) {
                 if (prev.direction === 'asc') return { key, direction: 'desc' };
@@ -352,7 +380,7 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
         }
 
         if (header.toUpperCase() === 'ASIN') {
-            return <AsinCell val={val} row={row} />;
+            return <AsinCell val={val} row={row} onRemove={onRemoveRow} />;
         }
 
         if (header === '主图') {
@@ -391,7 +419,7 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
             }
         }
 
-        if (header === 'BuyBox卖家') {
+        if (header === '卖家') {
             const sellerLink = row['卖家首页'];
             if (sellerLink && sellerLink !== '#') {
                 return (
@@ -590,7 +618,7 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
                             disabled={isExporting}
                             className={`w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2 rounded-2xl font-bold transition-all shadow-lg active:scale-95 disabled:opacity-70 ${isExporting
                                 ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
-                                : 'bg-blue-600 hover:bg-blue-700 text-white'
+                                : 'bg-white border-2 border-blue-600 text-blue-600 hover:bg-blue-50'
                                 }`}
                         >
                             {isExporting ? (
@@ -603,6 +631,13 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
                                     <Download className="w-4 h-4" /> 下载搜索列表
                                 </>
                             )}
+                        </button>
+
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onGenerateMarketAnalysis(); }}
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2 rounded-2xl font-bold transition-all shadow-lg active:scale-95 bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:shadow-purple-200"
+                        >
+                            <ArrowLeft className="w-4 h-4 rotate-180" /> 生成市场分析
                         </button>
                     </div>
                 </div>
@@ -648,6 +683,26 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
                         <thead className="sticky top-0 z-20">
                             <tr className="bg-slate-50/95 backdrop-blur-md">
                                 {visibleHeaders.map((header) => {
+                                    // Special toggle button column
+                                    if (header === '__TOGGLE__') {
+                                        return (
+                                            <th
+                                                key="__TOGGLE__"
+                                                className="px-2 py-5 border-b-2 border-slate-300 border-r border-slate-200/50 w-px"
+                                            >
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); setIsDetailColumnsExpanded(v => !v); }}
+                                                    title={isDetailColumnsExpanded ? '折叠详情列' : '展开详情列'}
+                                                    className="flex items-center justify-center w-6 h-6 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                                                >
+                                                    {isDetailColumnsExpanded
+                                                        ? <ChevronsLeft className="w-4 h-4" />
+                                                        : <ChevronsRight className="w-4 h-4" />}
+                                                </button>
+                                            </th>
+                                        );
+                                    }
+
                                     const isSorted = sortConfig.key === header;
                                     const isBrand = header === '品牌' || header.toLowerCase() === 'brand';
                                     const isIndex = header === '序号';
@@ -655,7 +710,7 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
                                     const isPeriod = header === '上架时段';
                                     const isRank = header === '自然排名';
                                     const isTraffic = header === '自然:广告';
-                                    const isSeller = header === 'BuyBox卖家';
+                                    const isSeller = header === '卖家';
                                     const isMainImage = header === '主图';
 
                                     return (
@@ -703,12 +758,17 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
                                             }`}
                                     >
                                         {visibleHeaders.map((header) => {
+                                            // Empty cell for the toggle column
+                                            if (header === '__TOGGLE__') {
+                                                return <td key={`${i}-__toggle__`} className="border-r border-slate-100/30 w-px" />;
+                                            }
+
                                             const isBrand = header === '品牌' || header.toLowerCase() === 'brand';
                                             const isAsin = header.toLowerCase() === 'asin';
                                             const isPeriod = header === '上架时段';
                                             const isRank = header === '自然排名';
                                             const isTraffic = header === '自然:广告';
-                                            const isSeller = header === 'BuyBox卖家';
+                                            const isSeller = header === '卖家';
                                             const isMainImage = header === '主图';
 
                                             return (

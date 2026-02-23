@@ -20,18 +20,13 @@ const MONTH_LABELS = [
     '7月', '8月', '9月', '10月', '11月', '12月'
 ];
 
-// Colors for different years
-const COLORS = [
-    '#3b82f6', // blue
-    '#8b5cf6', // violet
-    '#ec4899', // pink
-    '#f59e0b', // amber
-    '#10b981', // emerald
-    '#6366f1', // indigo
-];
-
-export const MonthlySalesChart: React.FC<MonthlySalesChartProps> = ({ data }) => {
+export const MonthlySalesChart: React.FC<MonthlySalesChartProps> = ({ data: rawData }) => {
     const [hiddenYears, setHiddenYears] = useState<Set<string>>(new Set());
+
+    // 1. Adaptive Logic: Only show the last 3 years found in the data
+    const sortedRawData = [...rawData].sort((a, b) => b.year.localeCompare(a.year));
+    const data = sortedRawData.slice(0, 3); // Take the most recent 3 years
+    const activeYears = data.map(d => d.year);
 
     const toggleYear = (year: string) => {
         setHiddenYears(prev => {
@@ -50,8 +45,7 @@ export const MonthlySalesChart: React.FC<MonthlySalesChartProps> = ({ data }) =>
         toggleYear(dataKey);
     };
 
-    // Transform data for Recharts (merge years into one array of objects with month as index)
-    // Recharts usually expects: [{ month: 1, '2024': 100, '2025': 120 }, ...]
+    // Transform data for Recharts
     const chartData = Array.from({ length: 12 }, (_, i) => {
         const monthNum = i + 1;
         const entry: any = {
@@ -65,7 +59,14 @@ export const MonthlySalesChart: React.FC<MonthlySalesChartProps> = ({ data }) =>
         return entry;
     });
 
-    const activeYears = data.map(d => d.year);
+    // Color scheme synchronized with price charts
+    const getYearStyle = (index: number) => {
+        // index 0 is newest (sortedRawData descends)
+        if (index === 0) return { color: '#2563eb', width: 3, opacity: 1 }; // Blue
+        if (index === 1) return { color: '#9333ea', width: 2, opacity: 0.9 }; // Purple
+        if (index === 2) return { color: '#94a3b8', width: 2, opacity: 0.7 }; // Gray
+        return { color: '#cbd5e1', width: 2, opacity: 0.5 };
+    };
 
     if (data.length === 0) {
         return (
@@ -79,8 +80,8 @@ export const MonthlySalesChart: React.FC<MonthlySalesChartProps> = ({ data }) =>
         <div className="group bg-white/60 backdrop-blur-xl border border-white/40 p-8 rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-500 animate-in fade-in slide-in-from-bottom-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
-                    <h3 className="text-2xl font-bold text-slate-800 tracking-tight">月度销量趋势 (Monthly Sales Trend)</h3>
-                    <p className="text-sm text-slate-500 font-medium mt-1">各个年份的月度销量分布图</p>
+                    <h3 className="text-2xl font-bold text-slate-800 tracking-tight">月度销量趋势 (近三年对比)</h3>
+                    <p className="text-sm text-slate-500 font-medium mt-1">各个年份的历史月度销量分布对比</p>
                 </div>
             </div>
 
@@ -125,26 +126,29 @@ export const MonthlySalesChart: React.FC<MonthlySalesChartProps> = ({ data }) =>
                                 fontSize: '14px',
                                 fontWeight: 500
                             }}
-                            verticalAlign="top"
-                            align="right"
+                            verticalAlign="bottom"
+                            align="center"
                             onClick={handleLegendClick}
                             content={(props) => {
                                 const { payload } = props;
                                 return (
-                                    <ul className="flex justify-end gap-6 list-none p-0 m-0">
+                                    <ul className="flex justify-center gap-8 list-none p-0 m-0 mt-4">
                                         {payload?.map((entry: any, index: number) => {
                                             const isHidden = hiddenYears.has(entry.dataKey);
+                                            // Use the color already assigned to the legend entry by Recharts
                                             return (
                                                 <li
                                                     key={`item-${index}`}
-                                                    className={`flex items-center gap-2 cursor-pointer transition-opacity duration-300 ${isHidden ? 'opacity-30' : 'opacity-100'}`}
+                                                    className={`flex items-center gap-2 cursor-pointer transition-all duration-300 hover:scale-105 ${isHidden ? 'opacity-30 grayscale' : 'opacity-100'}`}
                                                     onClick={() => toggleYear(entry.dataKey)}
                                                 >
                                                     <div
-                                                        className="w-3 h-3 rounded-full"
+                                                        className="w-3.5 h-3.5 rounded-full shadow-sm"
                                                         style={{ backgroundColor: entry.color }}
                                                     />
-                                                    <span className="text-slate-600 select-none">{entry.value}</span>
+                                                    <span className={`text-sm ${isHidden ? 'text-slate-400' : 'text-slate-600 font-bold'}`}>
+                                                        {entry.value}年
+                                                    </span>
                                                 </li>
                                             );
                                         })}
@@ -152,20 +156,25 @@ export const MonthlySalesChart: React.FC<MonthlySalesChartProps> = ({ data }) =>
                                 );
                             }}
                         />
-                        {activeYears.map((year, index) => (
-                            <Line
-                                key={year}
-                                type="monotone"
-                                dataKey={year}
-                                stroke={COLORS[index % COLORS.length]}
-                                strokeWidth={3}
-                                dot={{ r: 4, strokeWidth: 2, fill: '#fff' }}
-                                activeDot={{ r: 6, strokeWidth: 0 }}
-                                animationDuration={1500}
-                                connectNulls={false} // Crucial: don't connect nulls so the line stops
-                                hide={hiddenYears.has(year)}
-                            />
-                        ))}
+                        {[...activeYears].reverse().map((year) => {
+                            const index = activeYears.indexOf(year);
+                            const style = getYearStyle(index);
+                            return (
+                                <Line
+                                    key={year}
+                                    type="monotone"
+                                    dataKey={year}
+                                    stroke={style.color}
+                                    strokeWidth={style.width}
+                                    strokeOpacity={style.opacity}
+                                    dot={{ r: 4, strokeWidth: 2, fill: '#fff', stroke: style.color }}
+                                    activeDot={{ r: 6, strokeWidth: 0, fill: style.color }}
+                                    animationDuration={1500}
+                                    connectNulls
+                                    hide={hiddenYears.has(year)}
+                                />
+                            );
+                        })}
                     </LineChart>
                 </ResponsiveContainer>
             </div>
