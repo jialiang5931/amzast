@@ -9,7 +9,7 @@ export async function exportToExcelWithImages(
     if (!data || data.length === 0) return;
 
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Search List');
+    const worksheet = workbook.addWorksheet('搜索列表');
 
     const imageColName = '主图';
 

@@ -5,7 +5,8 @@ import {
     BarChart3,
     Key,
     MessageSquareQuote,
-    ArrowRight
+    ArrowRight,
+    LayoutGrid
 } from 'lucide-react';
 import type { TabId } from '../components/layout/Sidebar';
 
@@ -48,6 +49,13 @@ const features = [
         description: '基于AI深度解析用户评论，直击痛点，优化产品开发。',
         icon: MessageSquareQuote,
         color: 'from-pink-500 to-rose-500',
+    },
+    {
+        id: 'toolbox',
+        title: '工具箱',
+        description: '集合了多种亚马逊辅助小工具，如利润计算器、ASIN 提取等。',
+        icon: LayoutGrid,
+        color: 'from-slate-600 to-slate-800',
     }
 ];
 

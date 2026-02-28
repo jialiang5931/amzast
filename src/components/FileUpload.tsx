@@ -10,6 +10,11 @@ export function FileUpload({ onFileUpload }: FileUploadProps) {
     const [isDragging, setIsDragging] = useState(false);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
+    const handleFile = useCallback((file: File) => {
+        setSelectedFile(file);
+        onFileUpload(file);
+    }, [onFileUpload]);
+
     const handleDrag = useCallback((e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
@@ -27,17 +32,12 @@ export function FileUpload({ onFileUpload }: FileUploadProps) {
         if (e.dataTransfer.files && e.dataTransfer.files[0]) {
             handleFile(e.dataTransfer.files[0]);
         }
-    }, []);
+    }, [handleFile]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             handleFile(e.target.files[0]);
         }
-    };
-
-    const handleFile = (file: File) => {
-        setSelectedFile(file);
-        onFileUpload(file);
     };
 
     const clearFile = (e: React.MouseEvent) => {

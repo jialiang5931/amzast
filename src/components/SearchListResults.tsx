@@ -235,22 +235,10 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
         return sortedData.slice(0, visibleCount);
     }, [sortedData, visibleCount]);
 
-    if (data.length === 0) {
-        return (
-            <div className="bg-white/60 backdrop-blur-xl border border-white/40 p-12 rounded-[2.5rem] shadow-xl text-center space-y-4">
-                <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto text-slate-300">
-                    <Table className="w-8 h-8" />
-                </div>
-                <p className="text-slate-500 font-medium">未找到可合并的数据，请检查 ASIN 是否匹配。</p>
-                <button onClick={onBack} className="text-blue-600 font-semibold hover:underline">返回上传</button>
-            </div>
-        );
-    }
-
     const originalHeaders = allPossibleKeys;
 
     // Define priority column groups to ensure only ONE match per category is added
-    const priorityGroups = [
+    const priorityGroups = React.useMemo(() => [
         ['序号'],
         ['ASIN'],
         ['主图'],
@@ -277,7 +265,7 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
         ['大类目'],
         ['小类目'],
         ['父ASIN', 'Parent ASIN']
-    ];
+    ], []);
 
     const headers = React.useMemo(() => {
         const normalizeForMatch = (s: string) => s.toString().trim().replace(/\s+/g, '').toLowerCase()
@@ -309,41 +297,8 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
             }
         });
 
-        // 2. Add remaining columns (already filtered of system ones in memo 1)
-        // const suffixOrder = ['-父-U', '-父-M', '-子-U', '-子-M', '-子-P'];
-        // const sortedRemaining = Array.from(remainingHeaders).sort((a: string, b: string) => {
-        //     const datePattern = /^(\d{4}-\d{2})/;
-        //     const matchA = a.match(datePattern);
-        //     const matchB = b.match(datePattern);
-
-        //     if (matchA && matchB) {
-        //         const suffixA = a.replace(matchA[1], '');
-        //         const suffixB = b.replace(matchB[1], '');
-        //         const indexA = suffixOrder.indexOf(suffixA);
-        //         const indexB = suffixOrder.indexOf(suffixB);
-
-        //         // Sort by suffix priority first
-        //         if (indexA !== indexB) {
-        //             if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-        //             if (indexA !== -1) return -1;
-        //             if (indexB !== -1) return 1;
-        //         }
-
-        //         // Then by date (Reverse Chronological)
-        //         return matchB[1].localeCompare(matchA[1]);
-        //     }
-
-        //     // Dates go after non-date columns
-        //     if (matchA) return 1;
-        //     if (matchB) return -1;
-
-        //     return a.localeCompare(b);
-        // });
-
-        // orderedHeaders.push(...sortedRemaining);
-
         return orderedHeaders;
-    }, [originalHeaders]);
+    }, [originalHeaders, priorityGroups]);
 
     // visibleHeaders: filter detail columns when collapsed, then inject __TOGGLE__ button after FBA
     const visibleHeaders = React.useMemo(() => {
@@ -360,6 +315,22 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
         }
         return filtered;
     }, [headers, isDetailColumnsExpanded]);
+
+    const [isExporting, setIsExporting] = React.useState(false);
+    const [selectedAsins, setSelectedAsins] = React.useState<Set<string>>(new Set());
+
+    if (data.length === 0) {
+        return (
+            <div className="bg-white/60 backdrop-blur-xl border border-white/40 p-12 rounded-[2.5rem] shadow-xl text-center space-y-4">
+                <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto text-slate-300">
+                    <Table className="w-8 h-8" />
+                </div>
+                <p className="text-slate-500 font-medium">未找到可合并的数据，请检查 ASIN 是否匹配。</p>
+                <button onClick={onBack} className="text-blue-600 font-semibold hover:underline">返回上传</button>
+            </div>
+        );
+    }
+
 
     const handleSort = (key: string) => {
         if (key === '序号' || key === '主图' || key === '__TOGGLE__') return;
@@ -464,8 +435,6 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
         );
     };
 
-    const [isExporting, setIsExporting] = React.useState(false);
-    const [selectedAsins, setSelectedAsins] = React.useState<Set<string>>(new Set());
 
     const toggleRowSelection = (asin: string) => {
         setSelectedAsins(prev => {

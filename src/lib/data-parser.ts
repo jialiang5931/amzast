@@ -264,7 +264,7 @@ export async function mergeSearchListData(files: File[]): Promise<MergedSearchLi
                     // Iterate columns and rename
                     Object.keys(row).forEach(key => {
                         let newKey = key;
-                        let val = row[key];
+                        const val = row[key];
 
                         // Skip common identify columns to avoid overwriting or duplication if already exists
                         if (['ASIN', 'SKU', '商品标题', '图片', 'URL', '所属类目'].includes(key)) {

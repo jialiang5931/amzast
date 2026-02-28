@@ -6,6 +6,8 @@ import type { TabId } from './components/layout/Sidebar';
 import { Home } from './pages/Home';
 import { MarketAnalysis } from './pages/MarketAnalysis';
 import { SearchListGenerator } from './pages/SearchListGenerator';
+import { ToolboxHome } from './pages/toolbox/ToolboxHome';
+import { AsinImageTool } from './pages/toolbox/AsinImageTool';
 
 function App() {
   const [activeTab, setActiveTab] = useState<TabId>('home');
@@ -80,7 +82,7 @@ function App() {
   const renderContent = () => {
     switch (activeTab) {
       case 'home':
-        return <Home onNavigate={(tab) => setActiveTab(tab)} />;
+        return <Home onNavigate={(tab: TabId) => setActiveTab(tab)} />;
       case 'market':
         return (
           <MarketAnalysis
@@ -106,6 +108,10 @@ function App() {
             onGenerateMarketAnalysis={handleGenerateMarketAnalysis}
           />
         );
+      case 'toolbox':
+        return <ToolboxHome onNavigate={(tab) => setActiveTab(tab as TabId)} />;
+      case 'toolbox-asin-image':
+        return <AsinImageTool onBack={() => setActiveTab('toolbox')} />;
       default:
         return (
           <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">

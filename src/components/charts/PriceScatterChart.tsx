@@ -191,10 +191,12 @@ export function PriceScatterChart({ data }: PriceScatterChartProps) {
     }, [handleMouseMove, handleMouseUp]);
 
     // 当 data 变化时（如外部筛选），同步重置视图域
-    useEffect(() => {
+    const [prevMaxs, setPrevMaxs] = useState({ p: defaultMaxPrice, u: defaultMaxUnits });
+    if (defaultMaxPrice !== prevMaxs.p || defaultMaxUnits !== prevMaxs.u) {
+        setPrevMaxs({ p: defaultMaxPrice, u: defaultMaxUnits });
         setXDomain([0, defaultMaxPrice]);
         setYDomain([0, defaultMaxUnits]);
-    }, [defaultMaxPrice, defaultMaxUnits]);
+    }
 
     const resetZoom = useCallback(() => {
         setXDomain([0, defaultMaxPrice]);

@@ -20,7 +20,7 @@ export function MultiFileUpload({ onFilesChange }: MultiFileUploadProps) {
         }
     }, []);
 
-    const handleFiles = (newFiles: FileList | null) => {
+    const handleFiles = useCallback((newFiles: FileList | null) => {
         if (!newFiles) return;
 
         const existingNames = new Set(files.map(f => f.name));
@@ -45,14 +45,14 @@ export function MultiFileUpload({ onFilesChange }: MultiFileUploadProps) {
             setFiles(updatedFiles);
             onFilesChange(updatedFiles);
         }
-    };
+    }, [files, onFilesChange]);
 
     const handleDrop = useCallback((e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
         setIsDragging(false);
         handleFiles(e.dataTransfer.files);
-    }, [files]);
+    }, [handleFiles]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         handleFiles(e.target.files);
