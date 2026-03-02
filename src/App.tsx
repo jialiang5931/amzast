@@ -8,6 +8,9 @@ import { MarketAnalysis } from './pages/MarketAnalysis';
 import { SearchListGenerator } from './pages/SearchListGenerator';
 import { ToolboxHome } from './pages/toolbox/ToolboxHome';
 import { AsinImageTool } from './pages/toolbox/AsinImageTool';
+import { MetaSpyHome } from './pages/toolbox/MetaSpyHome';
+import MetaSpy from './pages/toolbox/MetaSpy';
+import { MetaSpyRealtime } from './pages/toolbox/MetaSpyRealtime';
 
 function App() {
   const [activeTab, setActiveTab] = useState<TabId>('home');
@@ -112,6 +115,12 @@ function App() {
         return <ToolboxHome onNavigate={(tab) => setActiveTab(tab as TabId)} />;
       case 'toolbox-asin-image':
         return <AsinImageTool onBack={() => setActiveTab('toolbox')} />;
+      case 'metaspy':
+        return <MetaSpyHome onNavigate={(tab) => setActiveTab(tab as TabId)} />;
+      case 'metaspy-dev':
+        return <MetaSpy />;
+      case 'metaspy-realtime':
+        return <MetaSpyRealtime onBack={() => setActiveTab('metaspy')} />;
       default:
         return (
           <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">

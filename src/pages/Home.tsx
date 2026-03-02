@@ -6,7 +6,8 @@ import {
     Key,
     MessageSquareQuote,
     ArrowRight,
-    LayoutGrid
+    LayoutGrid,
+    Activity
 } from 'lucide-react';
 import type { TabId } from '../components/layout/Sidebar';
 
@@ -49,6 +50,13 @@ const features = [
         description: '基于AI深度解析用户评论，直击痛点，优化产品开发。',
         icon: MessageSquareQuote,
         color: 'from-pink-500 to-rose-500',
+    },
+    {
+        id: 'metaspy',
+        title: 'MetaSpy 广告分析',
+        description: '实时爬取 Meta 广告图书馆，深度监测核心竞品的广告投放策略。',
+        icon: Activity,
+        color: 'from-blue-600 to-indigo-700',
     },
     {
         id: 'toolbox',

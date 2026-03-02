@@ -10,11 +10,12 @@ import {
     MessageSquareQuote,
     LayoutGrid,
     ChevronDown,
+    Activity,
     Image as ImageIcon
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
-export type TabId = 'home' | 'projects' | 'search' | 'market' | 'keywords' | 'voc' | 'toolbox' | 'toolbox-asin-image';
+export type TabId = 'home' | 'projects' | 'search' | 'market' | 'keywords' | 'voc' | 'metaspy' | 'metaspy-dev' | 'metaspy-realtime' | 'toolbox' | 'toolbox-asin-image';
 
 interface SidebarProps {
     activeTab: TabId;
@@ -35,6 +36,15 @@ const menuItems: MenuItem[] = [
     { id: 'market', label: '市场分析', icon: BarChart3 },
     { id: 'keywords', label: '关键词分析', icon: Key },
     { id: 'voc', label: 'VOC分析', icon: MessageSquareQuote },
+    {
+        id: 'metaspy',
+        label: 'MetaSpy 广告监测',
+        icon: Activity,
+        children: [
+            { id: 'metaspy-realtime', label: '实时查询', icon: Search },
+            { id: 'metaspy-dev', label: '开发中功能', icon: Activity },
+        ]
+    },
     {
         id: 'toolbox',
         label: '工具箱',
@@ -69,10 +79,9 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ item, activeTab, isCollapsed,
             <button
                 onClick={(e) => {
                     e.stopPropagation();
+                    onTabChange(item.id);
                     if (hasChildren && !isCollapsed) {
                         setIsExpanded(!isExpanded);
-                    } else {
-                        onTabChange(item.id);
                     }
                 }}
                 className={cn(
@@ -171,13 +180,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
 
     return (
         <aside
+            onClick={() => setIsCollapsed(!isCollapsed)}
             className={cn(
-                "relative flex flex-col h-screen bg-white/80 backdrop-blur-xl border-r border-slate-200 transition-all duration-300 ease-in-out z-30 shadow-xl",
+                "relative flex flex-col h-screen bg-white/80 backdrop-blur-xl border-r border-slate-200 transition-all duration-300 ease-in-out z-30 shadow-xl cursor-pointer",
                 isCollapsed ? "w-20" : "w-64"
             )}
         >
             {/* Logo Section */}
-            <div className="flex items-center gap-3 p-6 mb-4">
+            <div className="flex items-center gap-3 p-6 mb-4" onClick={(e) => e.stopPropagation()}>
                 <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-200">
                     <span className="text-white font-bold text-lg">A</span>
                 </div>
@@ -203,7 +213,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
 
             {/* Collapse Toggle */}
             <button
-                onClick={() => setIsCollapsed(!isCollapsed)}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    setIsCollapsed(!isCollapsed);
+                }}
                 className="mt-auto mb-6 mx-3 flex items-center justify-center p-2 rounded-xl text-slate-400 hover:bg-slate-50 hover:text-slate-700 transition-colors border border-transparent hover:border-slate-200"
             >
                 {isCollapsed ? <ChevronRight className="w-5 h-5" /> : (

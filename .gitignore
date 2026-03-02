@@ -27,3 +27,6 @@ dataSample/
 *.xlsx
 *.xls
 *.csv
+
+# Environment variables
+.env
