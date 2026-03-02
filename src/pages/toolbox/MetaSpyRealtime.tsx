@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Loader2, ArrowLeft, Play, ExternalLink, Copy } from 'lucide-react';
+import { Search, Loader2, ArrowLeft, Play } from 'lucide-react';
 
 interface MetaSpyRealtimeProps {
     onBack?: () => void;
