@@ -113,26 +113,39 @@ export const MetaSpyRealtime: React.FC<MetaSpyRealtimeProps> = ({ onBack }) => {
             {/* Step 3: 基础表格结构渲染 */}
             {results.length > 0 && (
                 <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden animate-in fade-in slide-in-from-top-4 duration-500">
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
                         <table className="w-full text-left border-collapse min-w-[800px]">
-                            <thead>
-                                <tr className="bg-slate-50/50 border-b border-slate-100">
-                                    <th className="px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-wider w-32">资料库编号</th>
-                                    <th className="px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-wider w-32">素材预览</th>
-                                    <th className="px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-wider w-48">公共主页</th>
-                                    <th className="px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-wider w-32">投放日期</th>
-                                    <th className="px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-wider">广告文案摘要</th>
-                                    <th className="px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-wider w-24">状态</th>
+                            <thead className="sticky top-0 z-10">
+                                <tr className="bg-gradient-to-r from-slate-700 to-slate-800 border-b border-slate-700">
+                                    <th className="px-6 py-3.5 text-[11px] font-black text-white/80 uppercase tracking-widest w-32">资料库编号</th>
+                                    <th className="px-6 py-3.5 text-[11px] font-black text-white/80 uppercase tracking-widest w-32">素材预览</th>
+                                    <th className="px-6 py-3.5 text-[11px] font-black text-white/80 uppercase tracking-widest w-48">公共主页</th>
+                                    <th className="px-6 py-3.5 text-[11px] font-black text-white/80 uppercase tracking-widest w-32">投放日期</th>
+                                    <th className="px-6 py-3.5 text-[11px] font-black text-white/80 uppercase tracking-widest w-24">投放时长</th>
+                                    <th className="px-6 py-3.5 text-[11px] font-black text-white/80 uppercase tracking-widest w-64">广告标题</th>
+                                    <th className="px-6 py-3.5 text-[11px] font-black text-white/80 uppercase tracking-widest">广告文案摘要</th>
+                                    <th className="px-6 py-3.5 text-[11px] font-black text-white/80 uppercase tracking-widest w-24">状态</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
                                 {results.map((ad, index) => {
                                     const adArchiveId = ad.metadata?.ad_archive_id || '-';
-                                    const startDate = ad.timing?.start_date
-                                        ? new Date(ad.timing.start_date * 1000).toLocaleDateString()
-                                        : '-';
+                                    const startDateObj = ad.timing?.start_date ? new Date(ad.timing.start_date * 1000) : null;
+                                    const startDate = startDateObj ? startDateObj.toLocaleDateString() : '-';
+
+                                    // 计算投放时长（天）
+                                    const durationDays = startDateObj
+                                        ? Math.floor((new Date().getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24))
+                                        : null;
+
                                     const body = ad.ad_content?.body || '';
                                     const isActive = ad.status?.is_active;
+
+                                    // 共创信息逻辑
+                                    const snapshot = ad.additional_info?.raw_data?.snapshot;
+                                    const brandedContent = snapshot?.branded_content;
+                                    const influencerName = snapshot?.page_name || ad.metadata?.page_name || '未知主页';
+                                    const brandName = brandedContent?.page_name;
 
                                     // 素材预览逻辑
                                     const videoThumbnail = ad.ad_content?.videos?.[0]?.video_preview_image_url;
@@ -143,9 +156,18 @@ export const MetaSpyRealtime: React.FC<MetaSpyRealtimeProps> = ({ onBack }) => {
                                     return (
                                         <tr key={ad.metadata?.ad_archive_id || index} className="group hover:bg-blue-50/30 transition-colors">
                                             <td className="px-6 py-4">
-                                                <div className="font-mono text-[11px] text-slate-500 bg-slate-100 px-2 py-1 rounded inline-block">
+                                                <a
+                                                    href={`https://www.facebook.com/ads/library/?id=${adArchiveId}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="font-mono text-[11px] text-blue-600 bg-blue-50 px-2 py-1 rounded inline-flex items-center gap-1 hover:bg-blue-100 transition-colors border border-blue-100 no-underline"
+                                                    title="在 Meta 广告库中查看"
+                                                >
                                                     {adArchiveId}
-                                                </div>
+                                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                                    </svg>
+                                                </a>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="relative w-20 h-20 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 group-hover:scale-105 transition-transform">
@@ -156,6 +178,9 @@ export const MetaSpyRealtime: React.FC<MetaSpyRealtimeProps> = ({ onBack }) => {
                                                                 alt="Ad Preview"
                                                                 className="w-full h-full object-cover"
                                                                 loading="lazy"
+                                                                onError={(e) => {
+                                                                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/80?text=Error';
+                                                                }}
                                                             />
                                                             {isVideo && (
                                                                 <div className="absolute inset-0 flex items-center justify-center bg-black/20">
@@ -171,14 +196,39 @@ export const MetaSpyRealtime: React.FC<MetaSpyRealtimeProps> = ({ onBack }) => {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className="font-bold text-slate-800 text-sm truncate max-w-[180px]">
-                                                    {ad.metadata?.page_name || '未知主页'}
+                                                <div className="flex flex-col gap-0.5">
+                                                    {brandName ? (
+                                                        <>
+                                                            <div className="font-bold text-slate-800 text-sm truncate max-w-[180px]">
+                                                                {brandName}
+                                                            </div>
+                                                            <div className="font-bold text-slate-800 text-sm truncate max-w-[180px]">
+                                                                {influencerName}
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        <div className="font-bold text-slate-800 text-sm truncate max-w-[180px]">
+                                                            {influencerName}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span className="text-slate-500 text-xs font-medium tabular-nums">
                                                     {startDate}
                                                 </span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex flex-col">
+                                                    <span className="text-blue-600 text-[13px] font-bold tabular-nums">
+                                                        {durationDays !== null ? `${durationDays} 天` : '-'}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="font-bold text-slate-800 text-[13px] line-clamp-2 leading-tight">
+                                                    {ad.ad_content?.title || '-'}
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <p className="text-slate-600 text-[13px] line-clamp-2 leading-relaxed">
