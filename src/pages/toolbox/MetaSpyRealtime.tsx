@@ -388,42 +388,40 @@ export const MetaSpyRealtime: React.FC<MetaSpyRealtimeProps> = ({ onBack }) => {
                                                 />
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className="flex flex-col gap-0.5">
+                                                <div className="flex flex-col text-slate-900 text-[13px] leading-relaxed">
                                                     {brandName ? (
                                                         <>
-                                                            <div className="font-bold text-slate-800 text-sm truncate max-w-[180px]">
+                                                            <div className="truncate max-w-[180px]">
                                                                 {brandName}
                                                             </div>
-                                                            <div className="font-bold text-slate-800 text-sm truncate max-w-[180px]">
+                                                            <div className="truncate max-w-[180px]">
                                                                 {influencerName}
                                                             </div>
                                                         </>
                                                     ) : (
-                                                        <div className="font-bold text-slate-800 text-sm truncate max-w-[180px]">
+                                                        <div className="truncate max-w-[180px]">
                                                             {influencerName}
                                                         </div>
                                                     )}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className="text-slate-500 text-xs font-medium tabular-nums">
+                                                <span className="text-slate-900 text-[13px] leading-relaxed tabular-nums">
                                                     {startDate}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className="flex flex-col">
-                                                    <span className="text-blue-600 text-[13px] font-bold tabular-nums">
-                                                        {durationDays !== null ? `${durationDays} 天` : '-'}
-                                                    </span>
-                                                </div>
+                                                <span className="text-slate-900 text-[13px] leading-relaxed tabular-nums">
+                                                    {durationDays !== null ? `${durationDays} 天` : '-'}
+                                                </span>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className="font-bold text-slate-800 text-[13px] line-clamp-2 leading-tight">
+                                                <div className="text-slate-900 text-[13px] line-clamp-2 leading-relaxed">
                                                     {ad.ad_content?.title || '-'}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <p className="text-slate-600 text-[13px] line-clamp-2 leading-relaxed">
+                                                <p className="text-slate-900 text-[13px] line-clamp-2 leading-relaxed">
                                                     {body}
                                                 </p>
                                             </td>
