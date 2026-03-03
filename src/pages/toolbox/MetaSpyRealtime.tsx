@@ -344,6 +344,7 @@ export const MetaSpyRealtime: React.FC<MetaSpyRealtimeProps> = ({ onBack }) => {
                                     <th className="px-6 py-4 text-[11px] font-black text-slate-900 uppercase tracking-widest w-24">投放时长</th>
                                     <th className="px-6 py-4 text-[11px] font-black text-slate-900 uppercase tracking-widest w-64">广告标题</th>
                                     <th className="px-6 py-4 text-[11px] font-black text-slate-900 uppercase tracking-widest">广告文案摘要</th>
+                                    <th className="px-6 py-4 text-[11px] font-black text-slate-900 uppercase tracking-widest w-20">同款数</th>
                                     <th className="px-6 py-4 text-[11px] font-black text-slate-900 uppercase tracking-widest w-24">状态</th>
                                 </tr>
                             </thead>
@@ -424,6 +425,11 @@ export const MetaSpyRealtime: React.FC<MetaSpyRealtimeProps> = ({ onBack }) => {
                                                 <p className="text-slate-900 text-[13px] line-clamp-2 leading-relaxed">
                                                     {body}
                                                 </p>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className="text-slate-900 text-[13px] leading-relaxed tabular-nums">
+                                                    {ad.additional_info?.raw_data?.collation_count ?? '-'}
+                                                </span>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-2">
