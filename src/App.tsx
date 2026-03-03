@@ -152,14 +152,14 @@ function App() {
 
       <main
         ref={mainRef}
-        className={`flex-1 h-screen overflow-y-auto relative ${activeTab === 'search' ? 'p-0' : 'py-6'}`}
+        className={`flex-1 h-screen overflow-y-auto relative ${['search', 'metaspy-realtime'].includes(activeTab) ? 'p-0' : 'py-6'}`}
         onScroll={(e) => {
           if (activeTab === 'search') {
             searchScrollY.current = (e.target as HTMLElement).scrollTop;
           }
         }}
       >
-        <div className={`h-full ${activeTab === 'search' ? 'w-full' : 'container mx-auto max-w-7xl'}`}>
+        <div className={`h-full ${['search', 'metaspy-realtime'].includes(activeTab) ? 'w-full' : 'container mx-auto max-w-7xl'}`}>
           {renderContent()}
         </div>
       </main>
