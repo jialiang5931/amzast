@@ -233,7 +233,7 @@ export const MetaSpyRealtime: React.FC<MetaSpyRealtimeProps> = ({ onBack }) => {
                         </button>
                         <div>
                             <h2 className="text-xl font-bold text-slate-900 tracking-tight">实时查询 / 关键词搜索</h2>
-                            <p className="text-slate-500 text-[11px]">输入关键词或 Meta 广告库链接，即时抓取最新广告数据。</p>
+                            <p className="text-slate-500 text-[11px]">输入关键词或 Meta 广告库链接，或者直接 <a href="https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=ALL" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-bold">点击这里</a> 前往 Meta 广告库获取链接。</p>
                         </div>
                     </div>
 
@@ -349,16 +349,17 @@ export const MetaSpyRealtime: React.FC<MetaSpyRealtimeProps> = ({ onBack }) => {
                         <table className="w-full text-left border-collapse min-w-[800px]">
                             <thead className="sticky top-0 z-10">
                                 <tr className="bg-slate-50/90 backdrop-blur-sm border-b border-slate-200">
-                                    <th className="px-3 py-4 text-[11px] font-black text-slate-900 uppercase tracking-widest w-12 text-center">序号</th>
-                                    <th className="px-3 py-4 text-[11px] font-black text-slate-900 uppercase tracking-widest w-32">资料库编号</th>
-                                    <th className="px-3 py-4 text-[11px] font-black text-slate-900 uppercase tracking-widest w-32">素材预览</th>
-                                    <th className="px-6 py-4 text-[11px] font-black text-slate-900 uppercase tracking-widest w-48">公共主页</th>
-                                    <th className="px-6 py-4 text-[11px] font-black text-slate-900 uppercase tracking-widest w-32">投放日期</th>
-                                    <th className="px-6 py-4 text-[11px] font-black text-slate-900 uppercase tracking-widest w-24">投放时长</th>
-                                    <th className="px-6 py-4 text-[11px] font-black text-slate-900 uppercase tracking-widest w-64">广告标题</th>
-                                    <th className="px-6 py-4 text-[11px] font-black text-slate-900 uppercase tracking-widest">广告文案摘要</th>
-                                    <th className="px-6 py-4 text-[11px] font-black text-slate-900 uppercase tracking-widest w-20">同款数</th>
-                                    <th className="px-6 py-4 text-[11px] font-black text-slate-900 uppercase tracking-widest w-24">状态</th>
+                                    <th className="px-3 py-4 text-[14px] font-black text-slate-900 uppercase tracking-widest w-12 text-center whitespace-nowrap">序号</th>
+                                    <th className="px-3 py-4 text-[14px] font-black text-slate-900 uppercase tracking-widest w-32 whitespace-nowrap">资料库编号</th>
+                                    <th className="px-3 py-4 text-[14px] font-black text-slate-900 uppercase tracking-widest w-32 whitespace-nowrap">素材预览</th>
+                                    <th className="px-6 py-4 text-[14px] font-black text-slate-900 uppercase tracking-widest w-48 whitespace-nowrap">公共主页</th>
+                                    <th className="px-6 py-4 text-[14px] font-black text-slate-900 uppercase tracking-widest w-32 whitespace-nowrap">投放日期</th>
+                                    <th className="px-6 py-4 text-[14px] font-black text-slate-900 uppercase tracking-widest w-24 whitespace-nowrap">投放时长</th>
+                                    <th className="px-6 py-4 text-[14px] font-black text-slate-900 uppercase tracking-widest w-64 whitespace-nowrap">广告标题</th>
+                                    <th className="px-6 py-4 text-[14px] font-black text-slate-900 uppercase tracking-widest whitespace-nowrap">广告文案摘要</th>
+                                    <th className="px-6 py-4 text-[14px] font-black text-slate-900 uppercase tracking-widest w-20 whitespace-nowrap">同款数</th>
+                                    <th className="px-6 py-4 text-[14px] font-black text-slate-900 uppercase tracking-widest w-24 whitespace-nowrap">跳转页</th>
+                                    <th className="px-6 py-4 text-[14px] font-black text-slate-900 uppercase tracking-widest w-24 whitespace-nowrap">状态</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
@@ -401,7 +402,7 @@ export const MetaSpyRealtime: React.FC<MetaSpyRealtimeProps> = ({ onBack }) => {
                                                     isVideo={isVideo}
                                                 />
                                             </td>
-                                            <td className="px-6 py-4">
+                                            <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="flex flex-col text-slate-900 text-[13px] leading-relaxed">
                                                     {brandName ? (
                                                         <>
@@ -419,32 +420,48 @@ export const MetaSpyRealtime: React.FC<MetaSpyRealtimeProps> = ({ onBack }) => {
                                                     )}
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4">
+                                            <td className="px-6 py-4 whitespace-nowrap">
                                                 <span className="text-slate-900 text-[13px] leading-relaxed tabular-nums">
                                                     {startDate}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4">
+                                            <td className="px-6 py-4 whitespace-nowrap">
                                                 <span className="text-slate-900 text-[13px] leading-relaxed tabular-nums">
                                                     {durationDays !== null ? `${durationDays} 天` : '-'}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <div className="text-slate-900 text-[13px] line-clamp-2 leading-relaxed">
+                                            <td className="px-6 py-4 max-w-xs">
+                                                <div className="text-slate-900 text-[13px] truncate leading-relaxed">
                                                     {ad.ad_content?.title || '-'}
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <p className="text-slate-900 text-[13px] line-clamp-2 leading-relaxed">
+                                            <td className="px-6 py-4 max-w-md">
+                                                <p className="text-slate-900 text-[13px] truncate leading-relaxed">
                                                     {body}
                                                 </p>
                                             </td>
-                                            <td className="px-6 py-4">
+                                            <td className="px-6 py-4 whitespace-nowrap">
                                                 <span className="text-slate-900 text-[13px] leading-relaxed tabular-nums">
                                                     {ad.additional_info?.raw_data?.collation_count ?? '-'}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4">
+                                            <td className="px-6 py-4 whitespace-nowrap text-[13px] leading-relaxed">
+                                                {ad.ad_content?.link_url ? (
+                                                    <a
+                                                        href={ad.ad_content.link_url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-slate-900 underline decoration-slate-300 hover:decoration-blue-600 hover:text-blue-600 transition-colors font-medium flex items-center gap-0.5 group/link"
+                                                    >
+                                                        {ad.ad_content?.cta_type === 'SHOP_NOW' ? '落地页' :
+                                                            ad.ad_content?.cta_type === 'LEARN_MORE' ? '中间页' : '跳转页'}
+                                                        <ArrowLeft className="w-2.5 h-2.5 rotate-135 opacity-0 group-hover/link:opacity-100 transition-opacity" />
+                                                    </a>
+                                                ) : (
+                                                    <span className="text-slate-400">-</span>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="flex items-center gap-2">
                                                     <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-slate-300'}`} />
                                                     <span className={`text-[11px] font-bold ${isActive ? 'text-green-600' : 'text-slate-400'}`}>
