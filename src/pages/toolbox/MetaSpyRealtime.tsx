@@ -174,14 +174,27 @@ export const MetaSpyRealtime: React.FC<MetaSpyRealtimeProps> = ({ onBack }) => {
     const [isHeaderExpanded, setIsHeaderExpanded] = useState(true);
 
     const handleSearch = async () => {
-        if (!url) {
-            alert('请输入 Meta 广告库 URL');
+        const inputStr = url.trim();
+        if (!inputStr) {
+            alert('请输入 Meta 广告库 URL 或关键词');
             return;
         }
+
         setIsLoading(true);
         try {
+            // 1. URL 格式判断：如果以 http(s) 开头且包含 facebook.com/ads/library，则认为是直接输入的 URL
+            const isUrl = /^https?:\/\/(www\.)?facebook\.com\/ads\/library/i.test(inputStr);
+
+            // 2. 构造最终请求的 URL
+            let finalUrl = inputStr;
+            if (!isUrl) {
+                // 用户输入的是关键词，按照预设模板拼接 URL
+                const baseUrl = "https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=ALL&is_targeted_country=false&media_type=all";
+                finalUrl = `${baseUrl}&q=${encodeURIComponent(inputStr)}&search_type=keyword_unordered&sort_data[mode]=total_impressions&sort_data[direction]=desc`;
+            }
+
             const { scrapeMetaAds } = await import('../../lib/apify');
-            const data = await scrapeMetaAds({ adLibraryUrl: url, maxResults });
+            const data = await scrapeMetaAds({ adLibraryUrl: finalUrl, maxResults });
             console.log('Fetched data:', data);
             setResults(data || []);
             // 搜索完成后自动收起面板以便查看数据
@@ -219,8 +232,8 @@ export const MetaSpyRealtime: React.FC<MetaSpyRealtimeProps> = ({ onBack }) => {
                             <ArrowLeft className="w-5 h-5" />
                         </button>
                         <div>
-                            <h2 className="text-xl font-bold text-slate-900 tracking-tight">实时查询</h2>
-                            <p className="text-slate-500 text-[11px]">输入 Meta 广告库链接，即时抓取最新广告数据。</p>
+                            <h2 className="text-xl font-bold text-slate-900 tracking-tight">实时查询 / 关键词搜索</h2>
+                            <p className="text-slate-500 text-[11px]">输入关键词或 Meta 广告库链接，即时抓取最新广告数据。</p>
                         </div>
                     </div>
 
@@ -229,7 +242,7 @@ export const MetaSpyRealtime: React.FC<MetaSpyRealtimeProps> = ({ onBack }) => {
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                             <div className="md:col-span-3">
                                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 ml-1">
-                                    Meta 广告库 URL
+                                    关键词 / Meta 广告库 URL
                                 </label>
                                 <div className="relative group">
                                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -239,7 +252,7 @@ export const MetaSpyRealtime: React.FC<MetaSpyRealtimeProps> = ({ onBack }) => {
                                         type="text"
                                         value={url}
                                         onChange={(e) => setUrl(e.target.value)}
-                                        placeholder="https://www.facebook.com/ads/library/..."
+                                        placeholder="例如：megelin 或 https://www.facebook.com/..."
                                         className="block w-full pl-11 pr-4 py-2.5 bg-slate-50 border-none rounded-2xl text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none"
                                     />
                                 </div>
