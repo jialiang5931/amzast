@@ -16,10 +16,10 @@
 - **State Management**: React `useState` / `useMemo` (由于应用规模较小，暂不需要 Redux/Zustand，利用内存直接管理解析后的 JSON 数据)。
 
 ### 后端 / 数据库 (Backend / Database)
-- **None (Serverless / Local-Only)**: 
-  - 本项目设计为**纯客户端应用 (Client-side App)**。
-  - **不使用数据库**：数据生命周期仅存在于用户会话期间（刷新即丢失）。
-  - **优势**：部署简单（静态托管即可），数据隐私性最强（数据不离本地）。
+- **Supabase Edge Functions (Edge Computing)**: 
+  - 应用作为 API 代理，处理跨域 (CORS) 请求并安全调用 Apify Scraper。
+  - 采用 Deno 环境，实现高性能的数据转发。
+- **No Database Storage**: 实时数据抓取后直接注入前端 State，不进行持久化，确保隐私与响应速度。
 
 ## 2. 项目结构 (Project Structure)
 
@@ -37,7 +37,9 @@ c:/AMZAST/
 │   │   └── FileUpload.tsx  # 文件上传组件
 │   ├── pages/              # 页面级组件
 │   │   ├── Home.tsx            # 首页 (功能卡片)
-│   │   └── MarketAnalysis.tsx  # 市场分析核心页
+│   │   ├── MarketAnalysis.tsx  # 市场分析核心页
+│   │   └── toolbox/
+│   │       └── MetaSpyRealtime.tsx  # MetaSpy 实时查询主页
 │   ├── lib/                # 工具库
 │   │   ├── data-parser.ts  # Excel 解析逻辑 (含父ASIN去重)
 │   │   ├── types.ts        # TS 类型定义
@@ -124,5 +126,15 @@ interface ScatterDataPoint {
 ### 4.4 样式隔离与暗黑模式
 - **方案**：使用 Tailwind 的 `dark` 类策略，配合 CSS 变量定义颜色系统（`bg-zinc-950` 等），确保玻璃拟态效果在不同背景下清晰可见。
 
+### 4.5 实时查询表格的布局校准 (Layout Calibration)
+- **挑战**：多列固定 (`sticky`) 在复杂布局下易出现对齐偏差，且半透明背景会导致“透字”。
+- **方案**：
+  - **硬编码偏移 (Hardcoded Offsets)**: 手动计算并应用累加的 `left-[px]` 值，确保在 Chrome/Safari 等不同内核下的稳定性。
+  - **不透明斑马纹 (Opaque Striping)**: 弃用透明度方案，针对固定列 cells 使用实色背景 (`bg-white` / `bg-slate-50`)，解决图层叠加产生的视觉异常。
+  - **动态行宽**: 核心字段（标题/摘要）使用 `min-w` + `line-clamp` 组合，防止自动列宽撑破固定布局。
+
 ## 5. API 接口
-- 无外部 API。所有交互均为可以通过函数调用 `parseExcel(file)` 完成的本地 IO。
+- **Supabase Edge Function (`metaspy`)**: 
+  - **Method**: POST
+  - **Body**: `{ adLibraryUrl: string, maxResults: number }`
+  - **Auth**: 无需用户登录，通过前端内置匿名密钥调用。

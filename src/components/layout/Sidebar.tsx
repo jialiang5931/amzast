@@ -79,9 +79,15 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ item, activeTab, isCollapsed,
             <button
                 onClick={(e) => {
                     e.stopPropagation();
-                    onTabChange(item.id);
+
                     if (hasChildren && !isCollapsed) {
-                        setIsExpanded(!isExpanded);
+                        if (!isExpanded) {
+                            setIsExpanded(true);
+                        } else {
+                            onTabChange(item.id);
+                        }
+                    } else {
+                        onTabChange(item.id);
                     }
                 }}
                 className={cn(
