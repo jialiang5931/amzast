@@ -51,16 +51,19 @@ serve(async (req) => {
         }
 
         // 构建送给 Apify 的 payload
-        // 注意：该 Actor 最新的 Input Schema 要求 URL 包装在 startUrls 或 adLibraryUrls 的数组对象中
+        // 根据官方 API 文档，adLibraryUrl 应该是一个字符串
         const apifyPayload = {
-            adLibraryUrls: [{ url: adLibraryUrl }],
+            adLibraryUrl: adLibraryUrl,
             maxResults: maxResults
         }
 
+        const apifyUrl = `https://api.apify.com/v2/acts/${ACTOR_ID}/runs?token=${APIFY_TOKEN}`;
+
         console.log(`Sending payload to Apify: ${JSON.stringify(apifyPayload)}`);
+        console.log(`URL: ${apifyUrl}`);
 
         // 1. 启动 Apify 任务
-        const runResponse = await fetch(`https://api.apify.com/v2/acts/${ACTOR_ID}/runs?token=${APIFY_TOKEN}`, {
+        const runResponse = await fetch(apifyUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(apifyPayload),
@@ -68,7 +71,7 @@ serve(async (req) => {
 
         if (!runResponse.ok) {
             const errorText = await runResponse.text()
-            throw new Error(`Apify error: ${errorText}`)
+            throw new Error(`Apify error (Status: ${runResponse.status}): ${errorText}`)
         }
 
         const runData = await runResponse.json()

@@ -10,6 +10,49 @@ export interface ProcessedRow {
 }
 
 /**
+ * Converts any image format (like WebP from Amazon) to JPEG for exceljs compatibility
+ */
+const imageBufferToJpeg = async (buffer: ArrayBuffer): Promise<ArrayBuffer> => {
+    return new Promise((resolve, reject) => {
+        try {
+            const blob = new Blob([buffer]);
+            const url = URL.createObjectURL(blob);
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    URL.revokeObjectURL(url);
+                    return resolve(buffer); // Fallback to original
+                }
+                // Fill white background in case of transparency
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+
+                canvas.toBlob((cblob) => {
+                    URL.revokeObjectURL(url);
+                    if (cblob) {
+                        cblob.arrayBuffer().then(resolve).catch(() => resolve(buffer));
+                    } else {
+                        resolve(buffer); // Fallback
+                    }
+                }, 'image/jpeg', 0.9);
+            };
+            img.onerror = () => {
+                URL.revokeObjectURL(url);
+                resolve(buffer); // Fallback
+            };
+            img.src = url;
+        } catch (e) {
+            resolve(buffer); // Fallback on error
+        }
+    });
+};
+
+/**
  * Parses the uploaded Excel file and extracts raw data.
  */
 export const parseAsinExcel = async (file: File): Promise<{ headers: any[], rows: ProcessedRow[] }> => {
@@ -80,14 +123,16 @@ export const fetchAmazonImage = async (asin: string): Promise<ArrayBuffer | null
 
             // Supabase client returns a Blob for binary responses
             if (altData instanceof Blob) {
-                return await altData.arrayBuffer();
+                const buffer = await altData.arrayBuffer();
+                return await imageBufferToJpeg(buffer);
             }
             return null;
         }
 
         // Supabase client returns a Blob for binary responses
         if (data instanceof Blob) {
-            return await data.arrayBuffer();
+            const buffer = await data.arrayBuffer();
+            return await imageBufferToJpeg(buffer);
         }
 
         return null;
@@ -107,13 +152,9 @@ export const generateExcelWithImages = async (
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Sheet1');
 
-    // Make sure the first column header explicitly mentions images if not present
-    let finalHeaders = [...headers];
-    if (finalHeaders[0] !== '图片') {
-        // If the file didn't have an image column, we should ideally insert one, 
-        // but based on user prompt, "图片 (数据来源于西柚找词)" is usually column A.
-        // We'll trust the original headers but ensure column 1 is wide enough.
-    }
+    // Make sure we explicitly have an image column
+    // We will prepend a new column for "图片" so we don't overwrite anything
+    const finalHeaders = ['图片', ...headers];
 
     sheet.addRow(finalHeaders);
 
@@ -131,12 +172,16 @@ export const generateExcelWithImages = async (
     sheet.columns.forEach((col, idx) => {
         if (idx === 0) {
             col.width = 15; // Width for image column
-        } else if (idx === 2) { // ASIN
-            col.width = 15;
-        } else if (idx === 1) { // Title
-            col.width = 40;
         } else {
-            col.width = 12;
+            // Shifted headers for width styling
+            const originalHeaderStr = String(finalHeaders[idx] || '');
+            if (originalHeaderStr.toUpperCase() === 'ASIN') {
+                col.width = 15;
+            } else if (originalHeaderStr.includes('标题') || originalHeaderStr.includes('Title')) {
+                col.width = 40;
+            } else {
+                col.width = 12;
+            }
         }
     });
 
@@ -144,27 +189,26 @@ export const generateExcelWithImages = async (
         const rowData = rows[i];
         const rowIndex = i + 2; // +1 for 1-based index, +1 for header
 
-        const row = sheet.addRow(rowData.originalRow);
+        // Prepend an empty string for the image column
+        const rowDataArr = ['', ...rowData.originalRow];
+
+        const row = sheet.addRow(rowDataArr);
         row.height = 80; // Make row tall enough for image
         row.alignment = { vertical: 'middle', horizontal: 'left' };
 
-        // Center ASIN and some specific columns based on general indices
-        const asinCell = row.getCell(3); // Assuming ASIN is C (index 3 via 1-based indexing)
-        if (asinCell) asinCell.alignment = { vertical: 'middle', horizontal: 'center' };
+        // Center ASIN column
+        const asinIdx = finalHeaders.findIndex(h => String(h || '').trim().toUpperCase() === 'ASIN');
+        if (asinIdx !== -1) {
+            const asinCell = row.getCell(asinIdx + 1); // 1-based indexing
+            if (asinCell) asinCell.alignment = { vertical: 'middle', horizontal: 'center' };
+        }
 
         if (rowData.imageBuffer) {
             try {
-                // Determine image extension (simple check)
-                const extension = 'jpeg';
-
                 const imageId = workbook.addImage({
                     buffer: rowData.imageBuffer,
-                    extension: extension as any,
+                    extension: 'jpeg',
                 });
-
-                // Clear any existing text in the first column where image goes
-                const imageCell = row.getCell(1);
-                imageCell.value = '';
 
                 // Add image. Coordinates are 0-based: { col, row }
                 sheet.addImage(imageId, {
