@@ -30,6 +30,11 @@ export const scrapeMetaAds = async (
         const country = (typeof arg1 === 'object' && arg1 !== null) ? arg1.country : arg2;
         if (country) payload.country = country;
 
+        // 【调试日志】打印前端打包注入的环境变量
+        console.log('[apify.ts] Vite Env Vars at Runtime:');
+        console.log('ACTOR_ID:', import.meta.env.VITE_APIFY_ACTOR_ID);
+        console.log('TOKEN starts with:', import.meta.env.VITE_APIFY_API_TOKEN?.substring(0, 5));
+
         const { data, error } = await supabase.functions.invoke('metaspy', {
             body: payload
         });
@@ -41,7 +46,7 @@ export const scrapeMetaAds = async (
             // 尝试从 data 中取出真实的后端错误信息
             const backendMsg = data?.error || error.message;
             console.error('[apify.ts] Edge Function error:', backendMsg, '| raw error:', error);
-            throw new Error(`查询失败: ${backendMsg}`);
+            throw new Error(`Edge Function returned an error: ${backendMsg}`);
         }
 
         if (data?.error) {

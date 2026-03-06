@@ -16,12 +16,16 @@ serve(async (req) => {
 
         // 从环境变量中获取 Token 和 Actor ID
         // 部署后通过 `supabase secrets set` 设置
-        const APIFY_TOKEN = Deno.env.get('APIFY_API_TOKEN')
-        const ACTOR_ID = Deno.env.get('APIFY_ACTOR_ID')
+        const APIFY_TOKEN = Deno.env.get('APIFY_API_TOKEN')?.trim()
+        let ACTOR_ID = Deno.env.get('APIFY_ACTOR_ID')?.trim()
 
         if (!APIFY_TOKEN || !ACTOR_ID) {
             throw new Error('Missing APIFY_API_TOKEN or APIFY_ACTOR_ID secret')
         }
+
+        // 调试日志：打印清理后的变量（部分隐藏）
+        console.log(`Using Actor ID: ${ACTOR_ID}`);
+        console.log(`Using Token: ${APIFY_TOKEN.substring(0, 5)}...`);
 
         // 构建 Ad Library URL
         // 优先使用前端传来的 adLibraryUrl，否则用 keyword 拼接
@@ -46,11 +50,20 @@ serve(async (req) => {
             throw new Error('Must provide either adLibraryUrl or keyword')
         }
 
+        // 构建送给 Apify 的 payload
+        // 注意：该 Actor 最新的 Input Schema 要求 URL 包装在 startUrls 或 adLibraryUrls 的数组对象中
+        const apifyPayload = {
+            adLibraryUrls: [{ url: adLibraryUrl }],
+            maxResults: maxResults
+        }
+
+        console.log(`Sending payload to Apify: ${JSON.stringify(apifyPayload)}`);
+
         // 1. 启动 Apify 任务
         const runResponse = await fetch(`https://api.apify.com/v2/acts/${ACTOR_ID}/runs?token=${APIFY_TOKEN}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ adLibraryUrl, maxResults }),
+            body: JSON.stringify(apifyPayload),
         })
 
         if (!runResponse.ok) {

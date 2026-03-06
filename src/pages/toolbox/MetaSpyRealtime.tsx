@@ -358,6 +358,7 @@ export const MetaSpyRealtime: React.FC<MetaSpyRealtimeProps> = ({ onBack }) => {
                                     <th className="px-6 py-4 text-[14px] font-black text-slate-900 uppercase tracking-widest w-80 min-w-[320px] whitespace-nowrap">广告标题</th>
                                     <th className="px-6 py-4 text-[14px] font-black text-slate-900 uppercase tracking-widest w-[448px] min-w-[448px] whitespace-nowrap">广告文案摘要</th>
                                     <th className="px-6 py-4 text-[14px] font-black text-slate-900 uppercase tracking-widest w-28 min-w-[112px] whitespace-nowrap">同款数</th>
+                                    <th className="px-6 py-4 text-[14px] font-black text-slate-900 uppercase tracking-widest w-28 min-w-[112px] whitespace-nowrap">跳转页</th>
                                     <th className="px-6 py-4 text-[14px] font-black text-slate-900 uppercase tracking-widest w-24 whitespace-nowrap">状态</th>
                                 </tr>
                             </thead>
@@ -445,6 +446,31 @@ export const MetaSpyRealtime: React.FC<MetaSpyRealtimeProps> = ({ onBack }) => {
                                                 <span className="text-slate-900 text-[13px] leading-relaxed tabular-nums">
                                                     {ad.additional_info?.raw_data?.collation_count ?? '-'}
                                                 </span>
+                                            </td>
+                                            <td className="px-6 py-4 w-28 min-w-[112px] whitespace-nowrap">
+                                                {(() => {
+                                                    const ctaType = ad.additional_info?.raw_data?.snapshot?.cta_type;
+                                                    const linkUrl = ad.ad_content?.link_url;
+                                                    let displayText = '--';
+                                                    if (ctaType === 'SHOP_NOW') displayText = '落地页';
+                                                    else if (ctaType === 'LEARN_MORE') displayText = '中间页';
+
+                                                    if (displayText === '--') {
+                                                        return <span className="text-slate-400 text-[13px]">{displayText}</span>;
+                                                    }
+
+                                                    return (
+                                                        <a
+                                                            href={linkUrl}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-slate-900 underline decoration-slate-300 hover:decoration-blue-600 hover:text-blue-600 transition-colors font-medium text-[13px] flex items-center gap-0.5 group/link text-nowrap"
+                                                        >
+                                                            {displayText}
+                                                            <ArrowLeft className="w-2.5 h-2.5 rotate-135 opacity-0 group-hover/link:opacity-100 transition-opacity" />
+                                                        </a>
+                                                    );
+                                                })()}
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-2">
