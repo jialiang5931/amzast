@@ -13,7 +13,7 @@ export interface ProcessedRow {
  * Converts any image format (like WebP from Amazon) to JPEG for exceljs compatibility
  */
 const imageBufferToJpeg = async (buffer: ArrayBuffer): Promise<ArrayBuffer> => {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         try {
             const blob = new Blob([buffer]);
             const url = URL.createObjectURL(blob);
