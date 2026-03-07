@@ -1,9 +1,13 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, Loader2, ArrowLeft, Play, ChevronUp, Maximize2, Copy, Check } from 'lucide-react';
+import { Search, Loader2, ArrowLeft, Play, ChevronUp, Maximize2, Copy, Check, Download } from 'lucide-react';
 
 interface MetaSpyRealtimeProps {
     onBack?: () => void;
+    results: any[];
+    onResultsChange: (results: any[]) => void;
+    searchUrl: string;
+    onSearchUrlChange: (url: string) => void;
 }
 
 const IdCell: React.FC<{ id: string }> = ({ id }) => {
@@ -165,13 +169,34 @@ const VideoPreviewCell: React.FC<VideoPreviewCellProps> = ({ videoUrl, thumbnail
     );
 };
 
-export const MetaSpyRealtime: React.FC<MetaSpyRealtimeProps> = ({ onBack }) => {
-    const [url, setUrl] = useState('');
+export const MetaSpyRealtime: React.FC<MetaSpyRealtimeProps> = ({
+    onBack,
+    results,
+    onResultsChange,
+    searchUrl,
+    onSearchUrlChange,
+}) => {
+    const [url, setUrl] = useState(searchUrl);
     const [maxResults, setMaxResults] = useState(50);
     const [isLoading, setIsLoading] = useState(false);
-    const [results, setResults] = useState<any[]>([]);
 
     const [isHeaderExpanded, setIsHeaderExpanded] = useState(true);
+    const [isExporting, setIsExporting] = useState(false);
+
+    const handleExport = async () => {
+        if (!results.length || isExporting) return;
+        setIsExporting(true);
+        try {
+            const { exportMetaAdsToExcel } = await import('../../lib/export-utils');
+            const filename = `meta_ads_${new Date().toISOString().split('T')[0]}.xlsx`;
+            await exportMetaAdsToExcel(results, filename);
+        } catch (error: any) {
+            console.error('Export failed:', error);
+            alert(`导出失败: ${error.message || '未知错误'}`);
+        } finally {
+            setIsExporting(false);
+        }
+    };
 
     const handleSearch = async () => {
         const inputStr = url.trim();
@@ -196,7 +221,7 @@ export const MetaSpyRealtime: React.FC<MetaSpyRealtimeProps> = ({ onBack }) => {
             const { scrapeMetaAds } = await import('../../lib/apify');
             const data = await scrapeMetaAds({ adLibraryUrl: finalUrl, maxResults });
             console.log('Fetched data:', data);
-            setResults(data || []);
+            onResultsChange(data || []);
             // 搜索完成后自动收起面板以便查看数据
             if (data && data.length > 0) {
                 setIsHeaderExpanded(false);
@@ -251,7 +276,7 @@ export const MetaSpyRealtime: React.FC<MetaSpyRealtimeProps> = ({ onBack }) => {
                                     <input
                                         type="text"
                                         value={url}
-                                        onChange={(e) => setUrl(e.target.value)}
+                                        onChange={(e) => { setUrl(e.target.value); onSearchUrlChange(e.target.value); }}
                                         placeholder="例如：megelin 或 https://www.facebook.com/..."
                                         className="block w-full pl-11 pr-4 py-2.5 bg-slate-50 border-none rounded-2xl text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none"
                                     />
@@ -275,7 +300,22 @@ export const MetaSpyRealtime: React.FC<MetaSpyRealtimeProps> = ({ onBack }) => {
                             </div>
                         </div>
 
-                        <div className="flex justify-end pt-1">
+                        <div className="flex justify-end items-center gap-3 pt-1">
+                            <button
+                                onClick={handleExport}
+                                disabled={isExporting || results.length === 0}
+                                className={`flex items-center gap-2 px-6 py-2 font-bold rounded-2xl shadow-lg transition-all active:scale-95 translate-y-0 hover:-translate-y-0.5
+                                    ${isExporting || results.length === 0
+                                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none border border-slate-200'
+                                        : 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-300 shadow-green-100'
+                                    }`}
+                                title={results.length === 0 ? '暂无数据，请先查询' : '下载广告数据为 Excel'}
+                            >
+                                {isExporting
+                                    ? <Loader2 className="w-5 h-5 animate-spin" />
+                                    : <Download className="w-5 h-5" />}
+                                {isExporting ? '导出中...' : '下载数据'}
+                            </button>
                             <button
                                 onClick={handleSearch}
                                 disabled={isLoading}
@@ -316,18 +356,38 @@ export const MetaSpyRealtime: React.FC<MetaSpyRealtimeProps> = ({ onBack }) => {
                         </div>
                     )}
 
-                    <div className="flex items-center gap-1.5 ml-auto px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-widest text-slate-400 group-hover/toggle:text-blue-600 group-hover/toggle:bg-blue-50 transition-all">
-                        {isHeaderExpanded ? (
-                            <>
-                                <ChevronUp className="w-4 h-4" />
-                                <span>收起面板</span>
-                            </>
-                        ) : (
-                            <>
-                                <Maximize2 className="w-4 h-4" />
-                                <span>展开选项</span>
-                            </>
+                    <div className="flex items-center gap-2 ml-auto">
+                        {/* Download button - only shown when collapsed and has results */}
+                        {!isHeaderExpanded && results.length > 0 && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); handleExport(); }}
+                                disabled={isExporting}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all
+                                    ${isExporting
+                                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                        : 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 active:scale-95'
+                                    }`}
+                                title="下载广告数据为 Excel"
+                            >
+                                {isExporting
+                                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    : <Download className="w-3.5 h-3.5" />}
+                                {isExporting ? '导出中...' : '下载数据'}
+                            </button>
                         )}
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-widest text-slate-400 group-hover/toggle:text-blue-600 group-hover/toggle:bg-blue-50 transition-all">
+                            {isHeaderExpanded ? (
+                                <>
+                                    <ChevronUp className="w-4 h-4" />
+                                    <span>收起面板</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Maximize2 className="w-4 h-4" />
+                                    <span>展开选项</span>
+                                </>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -347,14 +407,14 @@ export const MetaSpyRealtime: React.FC<MetaSpyRealtimeProps> = ({ onBack }) => {
                 <div className="bg-white border-t border-slate-200 border-b-0 shadow-sm overflow-hidden animate-in fade-in slide-in-from-top-4 duration-500 mb-0 flex-grow">
                     <div className="overflow-x-auto h-full overflow-y-auto pb-40">
                         <table className="w-full text-left border-collapse min-w-[800px]">
-                            <thead className="sticky top-0 z-10">
+                            <thead className="sticky top-0 z-20">
                                 <tr className="bg-slate-50/90 backdrop-blur-sm border-b border-slate-200">
-                                    <th className="px-3 py-4 text-[14px] font-black text-slate-900 uppercase tracking-widest w-[38px] min-w-[38px] max-w-[38px] text-center sticky left-0 bg-slate-50 z-20">序号</th>
-                                    <th className="px-3 py-4 text-[14px] font-black text-slate-900 uppercase tracking-widest w-[160px] min-w-[160px] max-w-[160px] sticky left-[38px] bg-slate-50 z-20">资料库编号</th>
-                                    <th className="px-3 py-4 text-[14px] font-black text-slate-900 uppercase tracking-widest w-[128px] min-w-[128px] max-w-[128px] sticky left-[198px] bg-slate-50 z-20">素材预览</th>
-                                    <th className="px-6 py-4 text-[14px] font-black text-slate-900 uppercase tracking-widest w-[160px] min-w-[160px] max-w-[160px] sticky left-[326px] bg-slate-50 z-20">公共主页</th>
-                                    <th className="px-6 py-4 text-[14px] font-black text-slate-900 uppercase tracking-widest w-[128px] min-w-[128px] max-w-[128px] sticky left-[486px] bg-slate-50 z-20">投放日期</th>
-                                    <th className="px-6 py-4 text-[14px] font-black text-slate-900 uppercase tracking-widest w-[128px] min-w-[128px] max-w-[128px] whitespace-nowrap sticky left-[614px] bg-slate-50 z-20 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.05)] text-center">投放时长</th>
+                                    <th className="px-3 py-4 text-[14px] font-black text-slate-900 uppercase tracking-widest w-[38px] min-w-[38px] max-w-[38px] text-center sticky left-0 top-0 bg-slate-50 z-30">序号</th>
+                                    <th className="px-3 py-4 text-[14px] font-black text-slate-900 uppercase tracking-widest w-[160px] min-w-[160px] max-w-[160px] sticky left-[38px] top-0 bg-slate-50 z-30">资料库编号</th>
+                                    <th className="px-3 py-4 text-[14px] font-black text-slate-900 uppercase tracking-widest w-[128px] min-w-[128px] max-w-[128px] sticky left-[198px] top-0 bg-slate-50 z-30">素材预览</th>
+                                    <th className="px-6 py-4 text-[14px] font-black text-slate-900 uppercase tracking-widest w-[160px] min-w-[160px] max-w-[160px] sticky left-[326px] top-0 bg-slate-50 z-30">公共主页</th>
+                                    <th className="px-6 py-4 text-[14px] font-black text-slate-900 uppercase tracking-widest w-[128px] min-w-[128px] max-w-[128px] sticky left-[486px] top-0 bg-slate-50 z-30">投放日期</th>
+                                    <th className="px-6 py-4 text-[14px] font-black text-slate-900 uppercase tracking-widest w-[128px] min-w-[128px] max-w-[128px] whitespace-nowrap sticky left-[614px] top-0 bg-slate-50 z-30 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.05)] text-center">投放时长</th>
                                     <th className="px-6 py-4 text-[14px] font-black text-slate-900 uppercase tracking-widest w-80 min-w-[320px] whitespace-nowrap">广告标题</th>
                                     <th className="px-6 py-4 text-[14px] font-black text-slate-900 uppercase tracking-widest w-[448px] min-w-[448px] whitespace-nowrap">广告文案摘要</th>
                                     <th className="px-6 py-4 text-[14px] font-black text-slate-900 uppercase tracking-widest w-28 min-w-[112px] whitespace-nowrap">同款数</th>

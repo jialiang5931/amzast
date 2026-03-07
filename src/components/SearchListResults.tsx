@@ -86,7 +86,7 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
     const [hoveredChartData, setHoveredChartData] = useState<{
         data: any,
         type: 'price' | 'sales' | 'parentSales',
-        position: { x: number, y: number }
+        position: { x: number, y: number, yTop: number }
     } | null>(null);
     const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -757,7 +757,7 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
                                                             setHoveredChartData({
                                                                 data: row,
                                                                 type: isPrice ? 'price' : (isChildSales ? 'sales' : 'parentSales'),
-                                                                position: { x: rect.left + rect.width / 2, y: rect.bottom }
+                                                                position: { x: rect.left + rect.width / 2, y: rect.bottom, yTop: rect.top }
                                                             });
                                                         }
                                                     }}
@@ -803,44 +803,62 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
             {/* Trend History Hover Portal */}
             {
                 hoveredChartData && createPortal(
-                    <div
-                        className="fixed z-[9999] animate-in fade-in zoom-in-95 duration-200"
-                        style={{
-                            left: hoveredChartData.position.x,
-                            top: hoveredChartData.position.y,
-                            transform: 'translateX(-50%) translateY(10px)'
-                        }}
-                        onMouseEnter={() => {
-                            if (hoverTimeoutRef.current) {
-                                clearTimeout(hoverTimeoutRef.current);
-                                hoverTimeoutRef.current = null;
-                            }
-                        }}
-                        onMouseLeave={() => {
-                            hoverTimeoutRef.current = setTimeout(() => {
-                                setHoveredChartData(null);
-                            }, 200);
-                        }}
-                    >
-                        <div className="relative">
-                            <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-t border-l border-slate-100 rotate-45" />
-                            {hoveredChartData.type === 'price' ? (
-                                <PriceHistoryChart data={hoveredChartData.data} />
-                            ) : hoveredChartData.type === 'sales' ? (
-                                <TrendHistoryChart
-                                    data={hoveredChartData.data}
-                                    dataKeyPattern={/^(\d{4})-(\d{2})-子-U$/}
-                                    title="子体月销量趋势 (近三年对比)"
-                                />
-                            ) : (
-                                <TrendHistoryChart
-                                    data={hoveredChartData.data}
-                                    dataKeyPattern={/^(\d{4})-(\d{2})-父-U$/}
-                                    title="父体销量趋势 (近三年对比)"
-                                />
-                            )}
-                        </div>
-                    </div>,
+                    (() => {
+                        const CHART_HEIGHT = 260; // estimated chart popup height in px
+                        const CHART_WIDTH = 380;  // estimated chart popup width in px
+                        const pos = hoveredChartData.position;
+                        // Check if there's enough space to open below
+                        const hasSpaceBelow = pos.y + CHART_HEIGHT + 16 < window.innerHeight;
+                        // Check if x overflows right side
+                        const clampedX = Math.min(Math.max(pos.x, CHART_WIDTH / 2 + 8), window.innerWidth - CHART_WIDTH / 2 - 8);
+
+                        return (
+                            <div
+                                className="fixed z-[9999] animate-in fade-in zoom-in-95 duration-200"
+                                style={{
+                                    left: clampedX,
+                                    top: hasSpaceBelow ? pos.y : undefined,
+                                    bottom: hasSpaceBelow ? undefined : (window.innerHeight - pos.yTop) + 8,
+                                    transform: 'translateX(-50%)'
+                                }}
+                                onMouseEnter={() => {
+                                    if (hoverTimeoutRef.current) {
+                                        clearTimeout(hoverTimeoutRef.current);
+                                        hoverTimeoutRef.current = null;
+                                    }
+                                }}
+                                onMouseLeave={() => {
+                                    hoverTimeoutRef.current = setTimeout(() => {
+                                        setHoveredChartData(null);
+                                    }, 200);
+                                }}
+                            >
+                                <div className="relative">
+                                    {/* Arrow indicator flips with popup direction */}
+                                    <div className={`absolute left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-slate-100 rotate-45 ${hasSpaceBelow
+                                        ? '-top-2 border-t border-l'
+                                        : '-bottom-2 border-b border-r'
+                                        }`} />
+                                    {hoveredChartData.type === 'price' ? (
+                                        <PriceHistoryChart data={hoveredChartData.data} />
+                                    ) : hoveredChartData.type === 'sales' ? (
+                                        <TrendHistoryChart
+                                            data={hoveredChartData.data}
+                                            dataKeyPattern={/^(\d{4})-(\d{2})-子-U$/}
+                                            title="子体月销量趋势 (近三年对比)"
+                                        />
+                                    ) : (
+                                        <TrendHistoryChart
+                                            data={hoveredChartData.data}
+                                            dataKeyPattern={/^(\d{4})-(\d{2})-父-U$/}
+                                            title="父体销量趋势 (近三年对比)"
+                                        />
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })()
+                    ,
                     document.body
                 )
             }

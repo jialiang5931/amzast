@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import type { RawAmazonRow, ParsedData, MergedSearchListData } from './types';
+import type { RawAmazonRow, ParsedData, MergedSearchListData, YearlyTrendData } from './types';
 
 /**
  * 根据列名优先级解析应使用哪一列作为「子体销量」来源。
@@ -48,59 +48,67 @@ export function processRawRows(jsonData: any[]): ParsedData {
         });
 
     // Transform data for Monthly Sales Chart
-    // Prioritize "YYYY-MM-子-U" (Sub-item Sales from Exported Search List)
-    // Fallback to "YYYY-MM" (Parent Sales from Raw Product File)
+    // Primary: "YYYY-MM-子-U" (Sub-item Sales from Exported Search List)
+    // Parent:  "YYYY-MM-父-U" (Parent Sales from Exported Search List)
+    // Fallback (no sales file): "YYYY-MM" (Parent Sales from Raw Product File)
     const rawMonthlyColumns = allKeys.filter(key => /^\d{4}-\d{2}$/.test(key));
+    const parentSalesColumns = allKeys.filter(key => /^\d{4}-\d{2}-父-U$/.test(key));
 
     const isUsingSubItemSales = subItemSalesColumns.length > 0;
     const monthlyColumns = isUsingSubItemSales ? subItemSalesColumns : rawMonthlyColumns;
 
-    const yearlyMap: Record<string, Record<number, number>> = {};
+    /** Helper: aggregate a set of date columns into YearlyTrendData[] */
+    function buildYearlyTrend(
+        cols: string[],
+        useParentDedup: boolean
+    ): YearlyTrendData[] {
+        const yMap: Record<string, Record<number, number>> = {};
 
-    monthlyColumns.forEach(col => {
-        const datePart = col.split('-').slice(0, 2).join('-'); // Get YYYY-MM
-        const [year, monthStr] = datePart.split('-');
-        const month = parseInt(monthStr, 10);
+        cols.forEach(col => {
+            const datePart = col.split('-').slice(0, 2).join('-');
+            const [year, monthStr] = datePart.split('-');
+            const month = parseInt(monthStr, 10);
 
-        if (!yearlyMap[year]) yearlyMap[year] = {};
-        if (!yearlyMap[year][month]) yearlyMap[year][month] = 0;
+            if (!yMap[year]) yMap[year] = {};
+            if (!yMap[year][month]) yMap[year][month] = 0;
 
-        const seenParentAsins = new Set<string>();
-
-        jsonData.forEach(row => {
-            const parentAsin = row['父ASIN'] || row['ASIN'] || row['Parent ASIN'];
-            const val = row[col];
-
-            if (val != null && val !== "") {
-                const numVal = Number(val.toString().replace(/[^0-9.-]/g, ''));
-                if (isNaN(numVal)) return;
-
-                if (isUsingSubItemSales) {
-                    // For sub-item sales, we sum ALL rows (no Parent ASIN de-duplication)
-                    // because each sub-item row is unique.
-                    yearlyMap[year][month] += numVal;
-                } else {
-                    // For raw monthly columns, we only count each Parent ASIN once per month
-                    if (!seenParentAsins.has(parentAsin)) {
-                        yearlyMap[year][month] += numVal;
-                        seenParentAsins.add(parentAsin);
+            const seen = new Set<string>();
+            jsonData.forEach(row => {
+                const parentAsin = row['父ASIN'] || row['ASIN'] || row['Parent ASIN'];
+                const val = row[col];
+                if (val != null && val !== '') {
+                    const numVal = Number(val.toString().replace(/[^0-9.-]/g, ''));
+                    if (isNaN(numVal)) return;
+                    if (useParentDedup) {
+                        if (!seen.has(parentAsin)) {
+                            yMap[year][month] += numVal;
+                            seen.add(parentAsin);
+                        }
+                    } else {
+                        yMap[year][month] += numVal;
                     }
                 }
-            }
+            });
         });
-    });
 
-    const monthlyData = Object.entries(yearlyMap).map(([year, months]) => ({
-        year,
-        data: Array.from({ length: 12 }, (_, i) => {
-            const month = i + 1;
-            const dataPoint = months[month];
-            return {
-                month,
-                units: dataPoint !== undefined ? dataPoint : null
-            };
-        })
-    })).sort((a, b) => a.year.localeCompare(b.year));
+        return Object.entries(yMap).map(([year, months]) => ({
+            year,
+            data: Array.from({ length: 12 }, (_, i) => {
+                const m = i + 1;
+                const dp = months[m];
+                return { month: m, units: dp !== undefined ? dp : null };
+            })
+        })).sort((a, b) => a.year.localeCompare(b.year));
+    }
+
+    // Primary dataset: sub-item (子-U) or raw YYYY-MM fallback
+    const monthlyData = buildYearlyTrend(
+        monthlyColumns,
+        !isUsingSubItemSales  // de-dup parent ASIN only when using raw YYYY-MM columns
+    );
+
+    // Parent dataset: 父-U (only available when sales file uploaded)
+    const monthlyDataParent = buildYearlyTrend(parentSalesColumns, false);
 
     // Transform data for Brand Monopoly Chart（复用统一优先级函数）
     const brandSalesMap: Record<string, number> = {};
@@ -130,6 +138,7 @@ export function processRawRows(jsonData: any[]): ParsedData {
         totalRows: jsonData.length,
         scatterData,
         monthlyData,
+        monthlyDataParent,
         brandData
     };
 }

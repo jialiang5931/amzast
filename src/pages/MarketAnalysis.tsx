@@ -139,7 +139,7 @@ export const MarketAnalysis: React.FC<MarketAnalysisProps> = ({
                 </div>
             ) : (
                 <div className="grid grid-cols-1 gap-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
-                    <MonthlySalesChart data={data.monthlyData} />
+                    <MonthlySalesChart data={data.monthlyData} dataParent={data.monthlyDataParent} />
                     <BrandBarChart
                         data={data.brandData}
                         onBrandClick={handleBrandClick}

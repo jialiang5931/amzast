@@ -12,7 +12,8 @@ import {
 import type { YearlyTrendData } from '../../lib/types';
 
 interface MonthlySalesChartProps {
-    data: YearlyTrendData[];
+    data: YearlyTrendData[];           // 子体月销量（默认）
+    dataParent?: YearlyTrendData[];    // 父体月销量（可选，有 Sales 文件时才有）
 }
 
 const MONTH_LABELS = [
@@ -20,11 +21,17 @@ const MONTH_LABELS = [
     '7月', '8月', '9月', '10月', '11月', '12月'
 ];
 
-export const MonthlySalesChart: React.FC<MonthlySalesChartProps> = ({ data: rawData }) => {
+export const MonthlySalesChart: React.FC<MonthlySalesChartProps> = ({ data: rawData, dataParent }) => {
+    // Toggle 状态：'sub' = 子体（默认），'parent' = 父体
+    const [source, setSource] = useState<'sub' | 'parent'>('sub');
     const [hiddenYears, setHiddenYears] = useState<Set<string>>(new Set());
 
+    const hasParentData = dataParent && dataParent.length > 0;
+    // 当前使用的数据集
+    const activeRaw = (source === 'parent' && hasParentData) ? dataParent! : rawData;
+
     // 1. Adaptive Logic: Only show the last 3 years found in the data
-    const sortedRawData = [...rawData].sort((a, b) => b.year.localeCompare(a.year));
+    const sortedRawData = [...activeRaw].sort((a, b) => b.year.localeCompare(a.year));
     const data = sortedRawData.slice(0, 3); // Take the most recent 3 years
     const activeYears = data.map(d => d.year);
 
@@ -83,6 +90,30 @@ export const MonthlySalesChart: React.FC<MonthlySalesChartProps> = ({ data: rawD
                     <h3 className="text-2xl font-bold text-slate-800 tracking-tight">月度销量趋势 (近三年对比)</h3>
                     <p className="text-sm text-slate-500 font-medium mt-1">各个年份的历史月度销量分布对比</p>
                 </div>
+
+                {/* 数据来源切换（只在父体数据存在时显示） */}
+                {hasParentData && (
+                    <div className="flex items-center gap-1 bg-slate-100 rounded-2xl p-1 shrink-0">
+                        <button
+                            onClick={() => { setSource('sub'); setHiddenYears(new Set()); }}
+                            className={`px-4 py-2 text-sm font-bold rounded-xl transition-all duration-200 ${source === 'sub'
+                                ? 'bg-white text-slate-900 shadow-sm'
+                                : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                        >
+                            子体销量
+                        </button>
+                        <button
+                            onClick={() => { setSource('parent'); setHiddenYears(new Set()); }}
+                            className={`px-4 py-2 text-sm font-bold rounded-xl transition-all duration-200 ${source === 'parent'
+                                ? 'bg-white text-slate-900 shadow-sm'
+                                : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                        >
+                            父体销量
+                        </button>
+                    </div>
+                )}
             </div>
 
             <div className="h-[400px] w-full">
@@ -118,7 +149,7 @@ export const MonthlySalesChart: React.FC<MonthlySalesChartProps> = ({ data: rawD
                                 backdropFilter: 'blur(8px)',
                             }}
                             cursor={{ stroke: '#cbd5e1', strokeWidth: 1 }}
-                            formatter={(value: any) => [value.toLocaleString(), '销量']}
+                            formatter={(value: any, name?: string) => [value.toLocaleString(), `${name ?? ''}年`]}
                         />
                         <Legend
                             wrapperStyle={{

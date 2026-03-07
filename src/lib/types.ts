@@ -59,7 +59,8 @@ export interface ParsedData {
     rows: RawAmazonRow[];
     totalRows: number;
     scatterData: ScatterDataPoint[];
-    monthlyData: YearlyTrendData[];
+    monthlyData: YearlyTrendData[];        // 子体月销量（YYYY-MM-子-U 优先，否则 YYYY-MM）
+    monthlyDataParent: YearlyTrendData[];  // 父体月销量（YYYY-MM-父-U）
     brandData: BrandSharePoint[];
 }
 

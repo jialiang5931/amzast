@@ -35,6 +35,10 @@ function App() {
   const [searchListData, setSearchListData] = useState<any[] | null>(null);
   const [searchListSite, setSearchListSite] = useState<string>('');
 
+  // MetaSpy Realtime Persisted State
+  const [metaSpyResults, setMetaSpyResults] = useState<any[]>([]);
+  const [metaSpyUrl, setMetaSpyUrl] = useState<string>('');
+
   const handleFileUpload = async (uploadedFile: File) => {
     setFile(uploadedFile);
     setIsParsing(true);
@@ -120,7 +124,15 @@ function App() {
       case 'metaspy-dev':
         return <MetaSpy />;
       case 'metaspy-realtime':
-        return <MetaSpyRealtime onBack={() => setActiveTab('metaspy')} />;
+        return (
+          <MetaSpyRealtime
+            onBack={() => setActiveTab('metaspy')}
+            results={metaSpyResults}
+            onResultsChange={setMetaSpyResults}
+            searchUrl={metaSpyUrl}
+            onSearchUrlChange={setMetaSpyUrl}
+          />
+        );
       default:
         return (
           <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
@@ -152,7 +164,7 @@ function App() {
 
       <main
         ref={mainRef}
-        className={`flex-1 h-screen overflow-y-auto relative ${['search', 'metaspy-realtime'].includes(activeTab) ? 'p-0' : 'py-6'}`}
+        className={`flex-1 h-screen overflow-y-auto overflow-x-hidden relative ${['search', 'metaspy-realtime'].includes(activeTab) ? 'p-0' : 'py-6'}`}
         onScroll={(e) => {
           if (activeTab === 'search') {
             searchScrollY.current = (e.target as HTMLElement).scrollTop;

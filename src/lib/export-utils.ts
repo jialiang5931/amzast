@@ -180,3 +180,153 @@ export async function exportToExcelWithImages(
     link.click();
     document.body.removeChild(link);
 }
+
+/**
+ * Export Meta Ads realtime query data to Excel.
+ * Columns: 资料库编号, 素材预览, 公共主页, 投放日期, 投放时长, 广告标题, 广告文案摘要, 同款数, 跳转页, 状态
+ */
+export async function exportMetaAdsToExcel(data: any[], filename: string) {
+    if (!data || data.length === 0) return;
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('广告列表');
+
+    worksheet.columns = [
+        { header: '资料库编号', key: '资料库编号', width: 22 },
+        { header: '素材预览', key: '素材预览', width: 16 },
+        { header: '公共主页', key: '公共主页', width: 20 },
+        { header: '投放日期', key: '投放日期', width: 14 },
+        { header: '投放时长', key: '投放时长', width: 12 },
+        { header: '广告标题', key: '广告标题', width: 36 },
+        { header: '广告文案摘要', key: '广告文案摘要', width: 50 },
+        { header: '同款数', key: '同款数', width: 10 },
+        { header: '跳转页', key: '跳转页', width: 14 },
+        { header: '状态', key: '状态', width: 10 },
+    ];
+
+    // Style header row
+    const headerRow = worksheet.getRow(1);
+    headerRow.eachCell((cell) => {
+        cell.font = { bold: true, color: { argb: 'FF1E293B' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        cell.border = { bottom: { style: 'medium', color: { argb: 'FFE2E8F0' } } };
+    });
+    headerRow.height = 28;
+
+    const now = new Date();
+
+    for (let i = 0; i < data.length; i++) {
+        const ad = data[i];
+
+        const adArchiveId = ad.metadata?.ad_archive_id || '-';
+        const adLibraryUrl = `https://www.facebook.com/ads/library/?id=${adArchiveId}`;
+
+        const snapshot = ad.additional_info?.raw_data?.snapshot;
+        const brandedContent = snapshot?.branded_content;
+        const pageName = brandedContent?.page_name
+            ? `${brandedContent.page_name} / ${snapshot?.page_name || ad.metadata?.page_name || ''}`.trim()
+            : (snapshot?.page_name || ad.metadata?.page_name || '-');
+
+        const startDateObj = ad.timing?.start_date ? new Date(ad.timing.start_date * 1000) : null;
+        const startDateStr = startDateObj ? startDateObj.toLocaleDateString('zh-CN') : '-';
+        const durationDays = startDateObj
+            ? Math.floor((now.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24))
+            : null;
+        const durationStr = durationDays !== null ? `${durationDays} 天` : '-';
+
+        const title = ad.ad_content?.title || '-';
+        const body = ad.ad_content?.body || '-';
+        const collationCount = ad.additional_info?.raw_data?.collation_count ?? '-';
+
+        const ctaType = snapshot?.cta_type;
+        const linkUrl = ad.ad_content?.link_url;
+        let ctaText = '-';
+        if (ctaType === 'SHOP_NOW') ctaText = '落地页';
+        else if (ctaType === 'LEARN_MORE') ctaText = '中间页';
+
+        const isActive = ad.status?.is_active;
+        const statusText = isActive ? '投放中' : '已结束';
+
+        const videoThumb = ad.ad_content?.videos?.[0]?.video_preview_image_url;
+        const imageResized = ad.ad_content?.images?.[0]?.resized_image_url;
+        const imageOrigin = ad.ad_content?.images?.[0]?.original_image_url;
+        const mediaUrl: string | null = videoThumb || imageResized || imageOrigin || null;
+
+        const rowValues: any = {
+            '资料库编号': { text: adArchiveId, hyperlink: adLibraryUrl, tooltip: '在 Meta 广告库中查看' },
+            '素材预览': mediaUrl || '-',
+            '公共主页': pageName,
+            '投放日期': startDateStr,
+            '投放时长': durationStr,
+            '广告标题': title,
+            '广告文案摘要': body,
+            '同款数': String(collationCount),
+            '跳转页': (ctaText !== '-' && linkUrl)
+                ? { text: ctaText, hyperlink: linkUrl, tooltip: '点击访问广告落地页' }
+                : ctaText,
+            '状态': statusText,
+        };
+
+        const excelRow = worksheet.addRow(rowValues);
+        excelRow.height = 80;
+
+        // Hyperlink styles
+        const idCell = excelRow.getCell(1);
+        if (idCell.value && typeof idCell.value === 'object' && (idCell.value as any).hyperlink) {
+            idCell.font = { color: { argb: 'FF1D4ED8' }, underline: true };
+        }
+        const ctaCell = excelRow.getCell(9);
+        if (ctaCell.value && typeof ctaCell.value === 'object' && (ctaCell.value as any).hyperlink) {
+            ctaCell.font = { color: { argb: 'FF1D4ED8' }, underline: true };
+        }
+        // Status color
+        const statusCell = excelRow.getCell(10);
+        statusCell.font = { bold: true, color: { argb: isActive ? 'FF16A34A' : 'FF94A3B8' } };
+
+        // Default alignment
+        excelRow.eachCell((cell) => {
+            cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: false };
+        });
+        // Left-align text columns
+        excelRow.getCell(6).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+        excelRow.getCell(7).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+
+        // Embed image
+        if (mediaUrl) {
+            try {
+                const response = await fetch(mediaUrl, { mode: 'cors' });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const imgBlob = await response.blob();
+                const imgBuffer = await imgBlob.arrayBuffer();
+
+                let ext: 'jpeg' | 'png' | 'gif' = 'jpeg';
+                const urlBase = mediaUrl.toLowerCase().split('?')[0];
+                if (urlBase.endsWith('.png')) ext = 'png';
+                else if (urlBase.endsWith('.gif')) ext = 'gif';
+
+                const imageId = workbook.addImage({ buffer: imgBuffer, extension: ext });
+                worksheet.addImage(imageId, {
+                    tl: { col: 1, row: i + 1 }, // col 1 = 素材预览 (0-based), row 0 = header
+                    ext: { width: 100, height: 100 },
+                    editAs: 'oneCell',
+                });
+                excelRow.getCell(2).value = '';
+                excelRow.getCell(2).alignment = { vertical: 'middle', horizontal: 'center' };
+            } catch (err) {
+                console.warn(`[exportMetaAds] row ${i}: image embed failed`, err);
+            }
+        }
+    }
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
