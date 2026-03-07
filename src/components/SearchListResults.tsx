@@ -518,7 +518,7 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
 
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
+        <div className="flex flex-col h-full animate-in fade-in slide-in-from-bottom-8 duration-700">
             {/* Action Bar */}
             <div
                 onClick={() => setIsHeaderExpanded(!isHeaderExpanded)}
@@ -636,17 +636,9 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
             </div>
 
             {/* Table Container - Fixed Height */}
-            <div className="bg-white/60 backdrop-blur-xl border border-white/40 rounded-[2rem] shadow-sm overflow-hidden border-collapse">
+            <div className="bg-white border-t border-slate-200 shadow-sm overflow-hidden flex-grow flex flex-col mb-0 animate-in fade-in slide-in-from-top-4 duration-500 rounded-b-[2rem]">
                 <div
-                    className="overflow-x-auto overflow-y-auto transition-all duration-500"
-                    style={{ maxHeight: isHeaderExpanded ? 'calc(100vh - 160px)' : 'calc(100vh - 80px)' }}
-                    onScroll={(e) => {
-                        const target = e.currentTarget;
-                        const bottomScrollbar = target.nextElementSibling as HTMLElement;
-                        if (bottomScrollbar) {
-                            bottomScrollbar.scrollLeft = target.scrollLeft;
-                        }
-                    }}
+                    className="overflow-x-auto overflow-y-auto h-full pb-40"
                 >
                     <table className="w-auto text-left table-auto border-collapse">
                         <thead className="sticky top-0 z-20">
@@ -792,27 +784,6 @@ export const SearchListResults: React.FC<SearchListResultsProps> = ({ data, site
                     </table>
                 </div>
 
-                {/* Bottom Scrollbar for horizontal navigation */}
-                <div
-                    className="overflow-x-auto overflow-y-hidden border-t border-slate-100"
-                    onScroll={(e) => {
-                        const target = e.currentTarget;
-                        const tableContainer = target.previousElementSibling as HTMLElement;
-                        if (tableContainer) {
-                            tableContainer.scrollLeft = target.scrollLeft;
-                        }
-                    }}
-                    ref={(el) => {
-                        if (el) {
-                            const tableContainer = el.previousElementSibling as HTMLElement;
-                            if (tableContainer) {
-                                el.scrollLeft = tableContainer.scrollLeft;
-                            }
-                        }
-                    }}
-                >
-                    <div style={{ height: '12px', width: '100%', minWidth: 'max-content' }} />
-                </div>
             </div>
 
             {/* Load More Button */}
