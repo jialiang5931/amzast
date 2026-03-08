@@ -12,44 +12,26 @@ serve(async (req) => {
     }
 
     try {
-        const { keyword, maxResults = 50, adLibraryUrl: inputAdLibraryUrl } = await req.json()
+        const { urls, actorId } = await req.json()
 
         const APIFY_TOKEN = Deno.env.get('APIFY_API_TOKEN')?.trim()
-        const ACTOR_ID = Deno.env.get('APIFY_ACTOR_ID')?.trim()
 
-        if (!APIFY_TOKEN || !ACTOR_ID) {
-            throw new Error('Missing APIFY_API_TOKEN or APIFY_ACTOR_ID secret')
+        if (!APIFY_TOKEN) {
+            throw new Error('Missing APIFY_API_TOKEN secret')
         }
 
-        console.log(`[MetaSpy] Actor: ${ACTOR_ID}`)
-
-        let adLibraryUrl: string
-        if (inputAdLibraryUrl) {
-            adLibraryUrl = inputAdLibraryUrl
-        } else if (keyword) {
-            const baseUrl = "https://www.facebook.com/ads/library/"
-            const params = new URLSearchParams({
-                active_status: "active",
-                ad_type: "all",
-                country: "ALL",
-                is_targeted_country: "false",
-                media_type: "all",
-                q: keyword,
-                search_type: "keyword_unordered"
-            })
-            adLibraryUrl = `${baseUrl}?${params.toString()}&sort_data[mode]=total_impressions&sort_data[direction]=desc`
-        } else {
-            throw new Error('Must provide either adLibraryUrl or keyword')
+        if (!urls || !Array.isArray(urls)) {
+            throw new Error('Must provide a "urls" array')
         }
 
-        const apifyPayload = {
-            adLibraryUrl: adLibraryUrl,
-            maxResults: maxResults
-        }
+        const ACTOR_ID = (actorId || 'axesso_data/amazon-product-details-scraper').replace('/', '~')
+        const apifyPayload = { urls }
+
+        console.log(`[Comp Analysis] Actor: ${ACTOR_ID}, URLs: ${urls.length}`)
 
         const apifyUrl = `https://api.apify.com/v2/acts/${ACTOR_ID}/runs?token=${APIFY_TOKEN}`
-        console.log(`Sending to Apify: ${JSON.stringify(apifyPayload)}`)
 
+        // 1. 启动 Apify 任务
         const runResponse = await fetch(apifyUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -58,20 +40,23 @@ serve(async (req) => {
 
         if (!runResponse.ok) {
             const errorText = await runResponse.text()
-            throw new Error(`Apify error (Status: ${runResponse.status}): ${errorText}`)
+            throw new Error(`Apify run error (${runResponse.status}): ${errorText}`)
         }
 
         const runData = await runResponse.json()
         const runId = runData.data.id
         const datasetId = runData.data.defaultDatasetId
 
+        // 2. 轮询等待结果
         let attempts = 0
         let items = []
-        while (attempts < 8) {
+        while (attempts < 10) {  // 最多等 100 秒
             await new Promise(resolve => setTimeout(resolve, 10000))
 
             const statusRes = await fetch(`https://api.apify.com/v2/actor-runs/${runId}?token=${APIFY_TOKEN}`)
             const statusData = await statusRes.json()
+
+            console.log(`[Comp Analysis] Run status attempt ${attempts + 1}: ${statusData.data.status}`)
 
             if (statusData.data.status === 'SUCCEEDED') {
                 const resultRes = await fetch(`https://api.apify.com/v2/datasets/${datasetId}/items?token=${APIFY_TOKEN}`)
@@ -83,15 +68,21 @@ serve(async (req) => {
             attempts++
         }
 
-        return new Response(JSON.stringify({ items, runId, status: items.length > 0 ? 'SUCCESS' : 'PENDING' }), {
+        return new Response(JSON.stringify({
+            items,
+            runId,
+            status: items.length > 0 ? 'SUCCESS' : 'PENDING'
+        }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 200,
         })
 
     } catch (error) {
-        return new Response(JSON.stringify({ error: error.message }), {
+        const msg = error instanceof Error ? error.message : String(error)
+        console.error('[comp-analysis] Caught error:', msg)
+        return new Response(JSON.stringify({ error: msg, items: [] }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 400,
+            status: 200,
         })
     }
 })

@@ -11,6 +11,7 @@ import { AsinImageTool } from './pages/toolbox/AsinImageTool';
 import { MetaSpyHome } from './pages/toolbox/MetaSpyHome';
 import MetaSpy from './pages/toolbox/MetaSpy';
 import { MetaSpyRealtime } from './pages/toolbox/MetaSpyRealtime';
+import { CompetitorAnalysis } from './pages/CompetitorAnalysis';
 
 function App() {
   const [activeTab, setActiveTab] = useState<TabId>('home');
@@ -102,6 +103,8 @@ function App() {
             onBackToSearch={() => setActiveTab('search')}
           />
         );
+      case 'comp-analysis':
+        return <CompetitorAnalysis onBack={() => setActiveTab('home')} />;
       case 'search':
         return (
           <SearchListGenerator
@@ -164,14 +167,14 @@ function App() {
 
       <main
         ref={mainRef}
-        className={`flex-1 h-screen overflow-y-auto overflow-x-hidden relative ${['search', 'metaspy-realtime'].includes(activeTab) ? 'p-0' : 'py-6'}`}
+        className={`flex-1 h-screen overflow-y-auto overflow-x-hidden relative ${['search', 'metaspy-realtime', 'comp-analysis'].includes(activeTab) ? 'p-0' : 'py-6'}`}
         onScroll={(e) => {
           if (activeTab === 'search') {
             searchScrollY.current = (e.target as HTMLElement).scrollTop;
           }
         }}
       >
-        <div className={`h-full ${['search', 'metaspy-realtime'].includes(activeTab) ? 'w-full' : 'container mx-auto max-w-7xl'}`}>
+        <div className={`h-full ${['search', 'metaspy-realtime', 'comp-analysis'].includes(activeTab) ? 'w-full' : 'container mx-auto max-w-7xl'}`}>
           {renderContent()}
         </div>
       </main>

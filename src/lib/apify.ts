@@ -66,3 +66,45 @@ export const scrapeMetaAds = async (
         throw error;
     }
 };
+
+export const scrapeAmazonProducts = async (asins: string[]) => {
+    if (!asins.length) return [];
+
+    try {
+        // 构建抓取 URL 列表
+        const urls = asins.map(asin => `https://www.amazon.com/dp/${asin}`);
+
+        // 使用专门的竞品分析 Edge Function: 'comp-analysis'
+        const { data, error } = await supabase.functions.invoke('comp-analysis', {
+            body: {
+                urls,
+                actorId: 'axesso_data/amazon-product-details-scraper'
+            }
+        });
+
+        console.log('[apify.ts] Amazon Scraper response:', { data, error });
+
+        if (error) {
+            // 从 context 中尝试解析 Edge Function 返回的真实错误体
+            let realMsg = error.message;
+            try {
+                const ctx = (error as any).context;
+                if (ctx) {
+                    const parsed = typeof ctx === 'string' ? JSON.parse(ctx) : ctx;
+                    if (parsed?.error) realMsg = parsed.error;
+                }
+            } catch (_) { }
+            console.error('[apify.ts] Real Edge Function error:', realMsg);
+            throw new Error(`后端错误: ${realMsg}`);
+        }
+
+        if (data?.error) {
+            throw new Error(data.error);
+        }
+
+        return data.items || [];
+    } catch (error) {
+        console.error('Amazon Scraper error:', error);
+        throw error;
+    }
+};

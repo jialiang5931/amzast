@@ -11,7 +11,8 @@ import {
     LayoutGrid,
     ChevronDown,
     Activity,
-    Image as ImageIcon
+    Image as ImageIcon,
+    Target
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -25,7 +26,7 @@ const MetaLogoIcon: React.FC<{ className?: string }> = ({ className }) => (
     </svg>
 );
 
-export type TabId = 'home' | 'projects' | 'search' | 'market' | 'keywords' | 'voc' | 'metaspy' | 'metaspy-dev' | 'metaspy-realtime' | 'toolbox' | 'toolbox-asin-image';
+export type TabId = 'home' | 'projects' | 'search' | 'market' | 'comp-analysis' | 'keywords' | 'voc' | 'metaspy' | 'metaspy-dev' | 'metaspy-realtime' | 'toolbox' | 'toolbox-asin-image';
 
 interface SidebarProps {
     activeTab: TabId;
@@ -44,6 +45,7 @@ const menuItems: MenuItem[] = [
     { id: 'projects', label: '我的项目', icon: Briefcase },
     { id: 'search', label: '生成搜索列表', icon: Search },
     { id: 'market', label: '市场分析', icon: BarChart3 },
+    { id: 'comp-analysis', label: '竞品分析', icon: Target },
     { id: 'keywords', label: '关键词分析', icon: Key },
     { id: 'voc', label: 'VOC分析', icon: MessageSquareQuote },
     {

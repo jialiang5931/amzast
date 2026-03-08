@@ -7,6 +7,7 @@ import {
     MessageSquareQuote,
     ArrowRight,
     LayoutGrid,
+    Target
 } from 'lucide-react';
 import type { TabId } from '../components/layout/Sidebar';
 
@@ -45,6 +46,13 @@ const features = [
         description: '多维度透视市场趋势，包含月销折线图及高阶价格散点分析。',
         icon: BarChart3,
         color: 'from-orange-500 to-red-500',
+    },
+    {
+        id: 'comp-analysis',
+        title: '竞品分析',
+        description: '全方位监控竞品动态，深度分析其价格变化、关键词权重及流量来源。',
+        icon: Target,
+        color: 'from-blue-400 to-purple-600',
     },
     {
         id: 'keywords',
