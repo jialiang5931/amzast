@@ -2,10 +2,9 @@ import React, { useState } from 'react';
 import { Search, ChevronUp, Maximize2, Target, HelpCircle } from 'lucide-react';
 
 interface CompetitorAnalysisProps {
-    onBack?: () => void;
 }
 
-export const CompetitorAnalysis: React.FC<CompetitorAnalysisProps> = ({ onBack }) => {
+export const CompetitorAnalysis: React.FC<CompetitorAnalysisProps> = () => {
     const [asinInput, setAsinInput] = useState('');
     const [isHeaderExpanded, setIsHeaderExpanded] = useState(true);
     const [isLoading, setIsLoading] = useState(false);

@@ -104,7 +104,7 @@ function App() {
           />
         );
       case 'comp-analysis':
-        return <CompetitorAnalysis onBack={() => setActiveTab('home')} />;
+        return <CompetitorAnalysis />;
       case 'search':
         return (
           <SearchListGenerator
