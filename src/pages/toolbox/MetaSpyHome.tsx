@@ -1,5 +1,5 @@
 import React from 'react';
-import { Rocket, ArrowRight, ShieldCheck, Zap, Search } from 'lucide-react';
+import { Rocket, ArrowRight, Search } from 'lucide-react';
 
 interface MetaSpyHomeProps {
     onNavigate: (id: string) => void;
@@ -20,23 +20,6 @@ const features = [
         description: '深度对接 Meta 广告库，支持实时关键词探测与 400 条最新广告素材同步。',
         icon: Rocket,
         color: 'from-blue-600 to-indigo-600',
-        status: 'Beta'
-    },
-    {
-        id: 'metaspy-trends',
-        title: '竞品投放趋势',
-        description: '分析竞品在不同国家的投放权重与时间分布（即将上线）。',
-        icon: Zap,
-        color: 'from-purple-500 to-pink-500',
-        status: 'Coming Soon'
-    },
-    {
-        id: 'metaspy-security',
-        title: '素材永久转存',
-        description: '解决 Meta 链接有效期短的问题，一键同步素材至个人云端（研发中）。',
-        icon: ShieldCheck,
-        color: 'from-emerald-500 to-teal-500',
-        status: 'Coming Soon'
     }
 ];
 

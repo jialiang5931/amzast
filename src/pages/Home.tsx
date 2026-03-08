@@ -97,8 +97,8 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
                         <button
                             key={feature.id}
                             onClick={() => onNavigate(feature.id as TabId)}
-                            className="group relative flex flex-col items-start p-8 rounded-3xl bg-white border border-slate-200 shadow-sm hover:shadow-2xl hover:border-blue-200 transition-all duration-500 text-left overflow-hidden animate-in fade-in slide-in-from-bottom-12 duration-1000"
-                            style={{ animationDelay: `${index * 100}ms` }}
+                            className="group relative flex flex-col items-start p-8 rounded-3xl bg-white border border-slate-200 shadow-sm hover:shadow-2xl hover:border-blue-200 hover:-translate-y-2 transition-all duration-500 text-left overflow-hidden animate-in fade-in slide-in-from-bottom-12 duration-1000"
+                            style={{ animationDelay: `${index * 150}ms` }}
                         >
                             {/* Background gradient hint */}
                             <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${feature.color} opacity-0 group-hover:opacity-5 blur-3xl transition-opacity duration-500`} />
