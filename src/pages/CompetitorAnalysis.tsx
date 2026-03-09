@@ -2,25 +2,53 @@ import React, { useState } from 'react';
 import { Search, ChevronUp, Maximize2, Target, HelpCircle } from 'lucide-react';
 
 interface CompetitorAnalysisProps {
+    results: any[];
+    onResultsChange: (results: any[]) => void;
+    asinInput: string;
+    onAsinInputChange: (value: string) => void;
 }
 
-export const CompetitorAnalysis: React.FC<CompetitorAnalysisProps> = () => {
-    const [asinInput, setAsinInput] = useState('');
-    const [isHeaderExpanded, setIsHeaderExpanded] = useState(true);
+export const CompetitorAnalysis: React.FC<CompetitorAnalysisProps> = ({
+    results,
+    onResultsChange,
+    asinInput,
+    onAsinInputChange
+}) => {
+    const [isHeaderExpanded, setIsHeaderExpanded] = useState(results.length === 0);
     const [isLoading, setIsLoading] = useState(false);
     const [progress, setProgress] = useState(0);
-    const [results, setResults] = useState<any[]>([]);
 
     const handleSearch = async () => {
-        const asins = asinInput.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
-        if (asins.length === 0) {
-            alert('请输入至少一个 ASIN');
+        // 1. 初步分割与清洗
+        let rawAsins = asinInput.split(/[\n,]+/).map(s => s.trim().toUpperCase()).filter(Boolean);
+
+        // 2. 格式校验 (10位字母数字)
+        const asinRegex = /^[A-Z0-9]{10}$/;
+        const validFormatAsins = rawAsins.filter(asin => asinRegex.test(asin));
+        const invalidCount = rawAsins.length - validFormatAsins.length;
+
+        // 3. 自动去重
+        const uniqueAsins = Array.from(new Set(validFormatAsins));
+        const duplicateCount = validFormatAsins.length - uniqueAsins.length;
+
+        if (uniqueAsins.length === 0) {
+            alert(invalidCount > 0 ? '输入的 ASIN 格式不正确（需为10位字符）' : '请输入至少一个 ASIN');
             return;
         }
-        if (asins.length > 10) {
-            alert('最多支持对比 10 个 ASIN');
+
+        if (uniqueAsins.length > 10) {
+            alert('最多支持对比 10 个唯一的 ASIN');
             return;
         }
+
+        // 提示去重或格式错误（可选，为了用户体验）
+        // 提示去重或格式错误（可选，为了用户体验）
+        if (invalidCount > 0 || duplicateCount > 0) {
+            console.log(`已过滤: ${invalidCount} 个无效格式, ${duplicateCount} 个重复项`);
+            onAsinInputChange(uniqueAsins.join('\n'));
+        }
+
+        const asins = uniqueAsins;
 
         setIsLoading(true);
         setProgress(10);
@@ -39,7 +67,7 @@ export const CompetitorAnalysis: React.FC<CompetitorAnalysisProps> = () => {
             clearInterval(timer);
             setProgress(100);
 
-            setResults(data || []);
+            onResultsChange(data || []);
             if (data && data.length > 0) {
                 setIsHeaderExpanded(false);
             }
@@ -97,7 +125,7 @@ export const CompetitorAnalysis: React.FC<CompetitorAnalysisProps> = () => {
                         <div className="relative group">
                             <textarea
                                 value={asinInput}
-                                onChange={(e) => setAsinInput(e.target.value)}
+                                onChange={(e) => onAsinInputChange(e.target.value)}
                                 placeholder="请输入 ASIN 列表，例如：&#10;B08P1HFRK8&#10;B096VBSVHF"
                                 className="block w-full px-6 py-4 bg-slate-50 border-2 border-transparent rounded-[1.5rem] text-slate-900 placeholder:text-slate-400 focus:ring-4 focus:ring-blue-500/10 focus:bg-white focus:border-blue-500/20 transition-all outline-none min-h-[120px] resize-none text-lg font-mono"
                             />

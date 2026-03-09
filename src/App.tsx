@@ -40,6 +40,10 @@ function App() {
   const [metaSpyResults, setMetaSpyResults] = useState<any[]>([]);
   const [metaSpyUrl, setMetaSpyUrl] = useState<string>('');
 
+  // Competitor Analysis Persisted State
+  const [competitorResults, setCompetitorResults] = useState<any[]>([]);
+  const [competitorAsinInput, setCompetitorAsinInput] = useState<string>('');
+
   const handleFileUpload = async (uploadedFile: File) => {
     setFile(uploadedFile);
     setIsParsing(true);
@@ -104,7 +108,14 @@ function App() {
           />
         );
       case 'comp-analysis':
-        return <CompetitorAnalysis />;
+        return (
+          <CompetitorAnalysis
+            results={competitorResults}
+            onResultsChange={setCompetitorResults}
+            asinInput={competitorAsinInput}
+            onAsinInputChange={setCompetitorAsinInput}
+          />
+        );
       case 'search':
         return (
           <SearchListGenerator
