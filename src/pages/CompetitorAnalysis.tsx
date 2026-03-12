@@ -1,6 +1,16 @@
 import React, { useState } from 'react';
 import { Search, ChevronUp, Maximize2, Target, HelpCircle } from 'lucide-react';
 
+// Helper function to format Amazon product date string (e.g., "January 15, 2024") to "YYYY/M/D"
+const formatDateToChinese = (dateStr?: string) => {
+    if (!dateStr) return 'N/A';
+    const date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) {
+        return dateStr; // Fallback to original string if parsing fails
+    }
+    return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
+};
+
 interface CompetitorAnalysisProps {
     results: any[];
     onResultsChange: (results: any[]) => void;
@@ -17,6 +27,18 @@ export const CompetitorAnalysis: React.FC<CompetitorAnalysisProps> = ({
     const [isHeaderExpanded, setIsHeaderExpanded] = useState(results.length === 0);
     const [isLoading, setIsLoading] = useState(false);
     const [progress, setProgress] = useState(0);
+    const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+
+    // Close lightbox on Esc key
+    React.useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setLightboxImage(null);
+        };
+        if (lightboxImage) {
+            document.addEventListener('keydown', handleKeyDown);
+            return () => document.removeEventListener('keydown', handleKeyDown);
+        }
+    }, [lightboxImage]);
 
     const handleSearch = async () => {
         // 1. 初步分割与清洗
@@ -95,8 +117,8 @@ export const CompetitorAnalysis: React.FC<CompetitorAnalysisProps> = ({
             <div
                 className={`transition-all duration-500 ease-in-out relative group/header
                     ${isHeaderExpanded
-                        ? 'bg-white p-6 pt-10 rounded-b-[2rem] border-b border-slate-100 shadow-xl shadow-slate-200/50 translate-y-0 opacity-100'
-                        : 'bg-white/80 py-3 px-8 rounded-b-2xl backdrop-blur-xl border-b border-slate-200/50 shadow-lg shadow-slate-200/30 opacity-95 hover:opacity-100'
+                        ? 'bg-white p-6 pt-10 border-b border-slate-100 shadow-xl shadow-slate-200/50 translate-y-0 opacity-100'
+                        : 'bg-white/80 py-3 px-8 backdrop-blur-xl border-b border-slate-200/50 shadow-lg shadow-slate-200/30 opacity-95 hover:opacity-100'
                     } sticky top-0 z-30 flex flex-col gap-1.5`}
             >
                 {/* Expandable Content Wrapper */}
@@ -194,141 +216,216 @@ export const CompetitorAnalysis: React.FC<CompetitorAnalysisProps> = ({
             </div>
 
             {/* Results Area */}
-            <div className="flex-1 overflow-auto p-8 pt-4">
+            <div className="flex-1 overflow-auto p-0">
                 {results.length > 0 ? (
-                    <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden animate-in fade-in zoom-in-95 duration-500">
-                        <div className="overflow-x-auto">
-                            <table className="w-full border-collapse">
-                                <thead>
-                                    <tr className="bg-slate-50/50 border-b border-slate-100">
-                                        <th className="px-6 py-8 text-left text-xs font-black text-slate-400 uppercase tracking-[0.2em] w-48 sticky left-0 bg-slate-50/90 backdrop-blur-md z-10">对比维度</th>
-                                        {results.map((product, idx) => (
-                                            <th key={idx} className="px-6 py-8 text-center min-w-[280px] border-l border-slate-100/50">
-                                                <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-600 text-xs font-bold mb-2">
-                                                    {idx + 1}
-                                                </span>
-                                                <div className="text-sm font-bold text-slate-900 line-clamp-1 px-4">
-                                                    {product.asin || '未知 ASIN'}
+                    <div className="bg-white border-b border-slate-100 animate-in fade-in zoom-in-95 duration-500 w-max min-w-full">
+                        <table className="w-full border-collapse">
+                            <tbody className="divide-y divide-slate-50">
+                                {/* Product Sequence */}
+                                <tr>
+                                    <td className="px-6 pt-6 pb-2 font-bold text-slate-900 text-sm sticky left-0 bg-white shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)] z-10 w-48">序号</td>
+                                    {results.map((_, idx) => (
+                                        <td key={idx} className="px-6 pt-6 pb-2 text-center border-l border-slate-100/50 min-w-[280px]">
+                                            <span className="inline-flex items-center justify-center px-4 py-1.5 rounded-full bg-blue-50 text-blue-600 text-xs font-bold border border-blue-100/50">
+                                                竞品 {idx + 1}
+                                            </span>
+                                        </td>
+                                    ))}
+                                </tr>
+                                {/* Product Images */}
+                                <tr>
+                                    <td className="px-6 pt-4 pb-8 font-bold text-slate-900 text-sm sticky left-0 bg-white shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)] z-10">主图</td>
+                                    {results.map((product, idx) => (
+                                        <td key={idx} className="px-6 pt-4 pb-8 border-l border-slate-100/50">
+                                            <div className="flex justify-center">
+                                                <div className="w-40 h-40 rounded-2xl overflow-visible bg-slate-50 border border-slate-100 flex items-center justify-center">
+                                                    {product.imageUrlList?.[0] ? (
+                                                        <img
+                                                            src={product.imageUrlList[0]}
+                                                            alt="Product"
+                                                            className="w-full h-full object-contain mix-blend-multiply hover:scale-150 transition-transform duration-300 origin-center relative z-10 hover:z-50 will-change-transform cursor-pointer"
+                                                            onClick={() => setLightboxImage(product.imageUrlList[0])}
+                                                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                                        />
+                                                    ) : (
+                                                        <span className="text-slate-300 text-xs">暂无图片</span>
+                                                    )}
                                                 </div>
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-50">
-                                    {/* Product Images */}
-                                    <tr>
-                                        <td className="px-6 py-8 font-bold text-slate-900 text-sm sticky left-0 bg-white shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)] z-10">产品主图</td>
-                                        {results.map((product, idx) => (
-                                            <td key={idx} className="px-6 py-8 border-l border-slate-100/50">
-                                                <div className="flex justify-center">
-                                                    <div className="w-40 h-40 rounded-2xl overflow-hidden bg-slate-50 border border-slate-100 group flex items-center justify-center">
-                                                        {product.mainImage?.imageUrl ? (
-                                                            <img
-                                                                src={product.mainImage.imageUrl}
-                                                                alt="Product"
-                                                                className="w-full h-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-500"
-                                                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                                                            />
+                                            </div>
+                                        </td>
+                                    ))}
+                                </tr>
+                                {/* ASIN */}
+                                <tr>
+                                    <td className="px-6 py-4 font-bold text-slate-900 text-sm sticky left-0 bg-white shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)] z-10">ASIN</td>
+                                    {results.map((product, idx) => (
+                                        <td key={idx} className="px-6 py-4 text-center border-l border-slate-100/50 font-mono text-sm text-slate-600">
+                                            {product.asin || 'N/A'}
+                                        </td>
+                                    ))}
+                                </tr>
+                                {/* Brand */}
+                                <tr>
+                                    <td className="px-6 py-4 font-bold text-slate-900 text-sm sticky left-0 bg-white shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)] z-10">品牌</td>
+                                    {results.map((product, idx) => {
+                                        const brand = product.manufacturer
+                                            ? product.manufacturer.replace(/^Visit the\s+/i, '').replace(/\s+Store$/i, '')
+                                            : 'N/A';
+                                        return (
+                                            <td key={idx} className="px-6 py-4 text-center border-l border-slate-100/50 text-sm text-slate-600">
+                                                {brand}
+                                            </td>
+                                        );
+                                    })}
+                                </tr>
+                                {/* Price */}
+                                <tr>
+                                    <td className="px-6 py-6 font-bold text-slate-900 text-sm sticky left-0 bg-white shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)] z-10">价格</td>
+                                    {results.map((product, idx) => (
+                                        <td key={idx} className="px-6 py-6 text-center border-l border-slate-100/50">
+                                            <span className="text-2xl font-black text-blue-600">
+                                                {product.price != null ? `$${product.price}` : 'N/A'}
+                                            </span>
+                                        </td>
+                                    ))}
+                                </tr>
+                                {/* Sales */}
+                                <tr>
+                                    <td className="px-6 py-6 font-bold text-slate-900 text-sm sticky left-0 bg-white shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)] z-10">子体销量</td>
+                                    {results.map((product, idx) => (
+                                        <td key={idx} className="px-6 py-6 text-center border-l border-slate-100/50">
+                                            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-orange-50 text-orange-700 rounded-full text-xs font-bold border border-orange-100">
+                                                {product.pastSales ? product.pastSales.split(' ')[0] : '暂无数据'}
+                                            </div>
+                                        </td>
+                                    ))}
+                                </tr>
+                                {/* Ratings */}
+                                <tr>
+                                    <td className="px-6 py-6 font-bold text-slate-900 text-sm sticky left-0 bg-white shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)] z-10">评分评价</td>
+                                    {results.map((product, idx) => {
+                                        const ratingStr = product.productRating || ''; // e.g. '4.7 out of 5 stars'
+                                        const ratingNum = parseFloat(ratingStr);
+                                        return (
+                                            <td key={idx} className="px-6 py-6 text-center border-l border-slate-100/50">
+                                                <div className="flex items-center justify-center gap-1 mb-1">
+                                                    <span className="text-sm font-bold text-slate-900">
+                                                        {isNaN(ratingNum) ? 'N/A' : ratingNum.toFixed(1)}
+                                                    </span>
+                                                </div>
+                                                <div className="text-xs text-slate-400">
+                                                    ({product.countReview ?? 0} 条评价)
+                                                </div>
+                                            </td>
+                                        );
+                                    })}
+                                </tr>
+                                {/* Availability Date */}
+                                <tr>
+                                    <td className="px-6 py-6 font-bold text-slate-900 text-sm sticky left-0 bg-white shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)] z-10">上架时间</td>
+                                    {results.map((product, idx) => {
+                                        const firstAvailableRaw = product.productDetails?.find((d: any) => d.name.includes('Date First Available'))?.value;
+                                        const formattedDate = formatDateToChinese(firstAvailableRaw);
+                                        return (
+                                            <td key={idx} className="px-6 py-6 text-center border-l border-slate-100/50 text-slate-600 text-sm">
+                                                {formattedDate}
+                                            </td>
+                                        );
+                                    })}
+                                </tr>
+                                {/* BSR */}
+                                <tr>
+                                    <td className="px-6 py-6 font-bold text-slate-900 text-sm sticky left-0 bg-white shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)] z-10">BSR 排名</td>
+                                    {results.map((product, idx) => {
+                                        const bsrDetail = product.productDetails?.find((d: any) => d.name.includes('Best Sellers Rank'));
+                                        return (
+                                            <td key={idx} className="px-6 py-6 text-center border-l border-slate-100/50">
+                                                <div className="text-xs font-medium text-slate-700 max-w-[220px] mx-auto">
+                                                    {bsrDetail?.value || 'N/A'}
+                                                </div>
+                                            </td>
+                                        );
+                                    })}
+                                </tr>
+                                {/* AI Review Insight (Preview) */}
+                                <tr>
+                                    <td className="px-6 py-8 font-bold text-slate-900 text-sm sticky left-0 bg-white shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)] z-10">口碑核心亮点</td>
+                                    {results.map((product, idx) => (
+                                        <td key={idx} className="px-6 py-8 border-l border-slate-100/50 text-center">
+                                            <p className="text-xs text-slate-500 leading-relaxed line-clamp-4 italic max-w-[280px] mx-auto text-left">
+                                                {product.reviewInsights?.summary || '暂无 AI 评价总结'}
+                                            </p>
+                                        </td>
+                                    ))}
+                                </tr>
+                                {/* Title */}
+                                <tr>
+                                    <td className="px-6 py-6 font-bold text-slate-900 text-sm sticky left-0 bg-white shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)] z-10">标题</td>
+                                    {results.map((product, idx) => (
+                                        <td key={idx} className="px-6 py-6 border-l border-slate-100/50 text-center">
+                                            <p className="text-sm text-slate-700 leading-relaxed max-w-[280px] mx-auto text-left">
+                                                {product.title || 'N/A'}
+                                            </p>
+                                        </td>
+                                    ))}
+                                </tr>
+                                {/* Bullet Points / Features */}
+                                <tr>
+                                    <td className="px-6 py-6 font-bold text-slate-900 text-sm sticky left-0 bg-white shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)] z-10">五点</td>
+                                    {results.map((product, idx) => (
+                                        <td key={idx} className="px-6 py-6 border-l border-slate-100/50 text-center">
+                                            {product.features && product.features.length > 0 ? (
+                                                <ul className="space-y-2 max-w-[280px] mx-auto text-left">
+                                                    {product.features.map((feature: string, fIdx: number) => (
+                                                        <li key={fIdx} className="text-xs text-slate-600 leading-relaxed flex gap-2">
+                                                            <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-50 text-blue-600 text-[10px] font-bold flex-shrink-0 mt-0.5">{fIdx + 1}</span>
+                                                            <span>{feature}</span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            ) : (
+                                                <span className="text-xs text-slate-400">暂无数据</span>
+                                            )}
+                                        </td>
+                                    ))}
+                                </tr>
+
+                                {/* Secondary Images (Dynamic Rows) */}
+                                {Array.from({
+                                    length: Math.max(...results.map(product => product.imageUrlList?.length || 0))
+                                }).map((_, imgIdx) => (
+                                    <tr key={`img-row-${imgIdx}`}>
+                                        <td className="px-6 py-4 font-bold text-slate-900 text-sm sticky left-0 bg-white shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)] z-10">
+                                            主图 {imgIdx + 1}
+                                        </td>
+                                        {results.map((product, pIdx) => {
+                                            const imgUrl = product.imageUrlList?.[imgIdx];
+                                            return (
+                                                <td key={`${pIdx}-${imgIdx}`} className="px-6 py-4 border-l border-slate-100/50">
+                                                    <div className="flex justify-center">
+                                                        {imgUrl ? (
+                                                            <div className="w-40 h-40 rounded-2xl overflow-visible bg-slate-50 border border-slate-100 flex items-center justify-center">
+                                                                <img
+                                                                    src={imgUrl}
+                                                                    alt={`Secondary Image ${imgIdx + 1}`}
+                                                                    className="w-full h-full object-contain mix-blend-multiply hover:scale-150 transition-transform duration-300 origin-center relative z-10 hover:z-50 cursor-pointer will-change-transform"
+                                                                    onClick={() => setLightboxImage(imgUrl)}
+                                                                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                                                />
+                                                            </div>
                                                         ) : (
-                                                            <span className="text-slate-300 text-xs">暂无图片</span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </td>
-                                        ))}
-                                    </tr>
-                                    {/* Price */}
-                                    <tr>
-                                        <td className="px-6 py-6 font-bold text-slate-900 text-sm sticky left-0 bg-white shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)] z-10">当前价格</td>
-                                        {results.map((product, idx) => (
-                                            <td key={idx} className="px-6 py-6 text-center border-l border-slate-100/50">
-                                                <span className="text-2xl font-black text-blue-600">
-                                                    {product.price != null ? `$${product.price}` : 'N/A'}
-                                                </span>
-                                                {product.retailPrice && (
-                                                    <div className="text-xs text-slate-400 line-through mt-1">
-                                                        ${product.retailPrice}
-                                                    </div>
-                                                )}
-                                            </td>
-                                        ))}
-                                    </tr>
-                                    {/* BSR */}
-                                    <tr>
-                                        <td className="px-6 py-6 font-bold text-slate-900 text-sm sticky left-0 bg-white shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)] z-10">BSR 排名</td>
-                                        {results.map((product, idx) => {
-                                            const bsrDetail = product.productDetails?.find((d: any) => d.name.includes('Best Sellers Rank'));
-                                            return (
-                                                <td key={idx} className="px-6 py-6 text-center border-l border-slate-100/50">
-                                                    <div className="text-xs font-medium text-slate-700 max-w-[220px] mx-auto">
-                                                        {bsrDetail?.value || 'N/A'}
-                                                    </div>
-                                                </td>
-                                            );
-                                        })}
-                                    </tr>
-                                    {/* Sales */}
-                                    <tr>
-                                        <td className="px-6 py-6 font-bold text-slate-900 text-sm sticky left-0 bg-white shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)] z-10">上月销量</td>
-                                        {results.map((product, idx) => (
-                                            <td key={idx} className="px-6 py-6 text-center border-l border-slate-100/50">
-                                                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-orange-50 text-orange-700 rounded-full text-xs font-bold border border-orange-100">
-                                                    {product.pastSales || '暂无数据'}
-                                                </div>
-                                            </td>
-                                        ))}
-                                    </tr>
-                                    {/* Availability Date */}
-                                    <tr>
-                                        <td className="px-6 py-6 font-bold text-slate-900 text-sm sticky left-0 bg-white shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)] z-10">上架时间</td>
-                                        {results.map((product, idx) => {
-                                            const firstAvailable = product.productDetails?.find((d: any) => d.name.includes('Date First Available'))?.value;
-                                            return (
-                                                <td key={idx} className="px-6 py-6 text-center border-l border-slate-100/50 text-slate-600 text-sm">
-                                                    {firstAvailable || 'N/A'}
-                                                </td>
-                                            );
-                                        })}
-                                    </tr>
-                                    {/* Ratings */}
-                                    <tr>
-                                        <td className="px-6 py-6 font-bold text-slate-900 text-sm sticky left-0 bg-white shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)] z-10">评分评价</td>
-                                        {results.map((product, idx) => {
-                                            const ratingStr = product.productRating || ''; // e.g. '4.7 out of 5 stars'
-                                            const ratingNum = parseFloat(ratingStr);
-                                            return (
-                                                <td key={idx} className="px-6 py-6 text-center border-l border-slate-100/50">
-                                                    <div className="flex items-center justify-center gap-1 mb-1">
-                                                        <span className="text-sm font-bold text-slate-900">
-                                                            {isNaN(ratingNum) ? 'N/A' : ratingNum.toFixed(1)}
-                                                        </span>
-                                                        {!isNaN(ratingNum) && (
-                                                            <div className="flex text-yellow-400 text-xs">
-                                                                {'★'.repeat(Math.round(ratingNum))}
+                                                            <div className="w-40 h-40 rounded-2xl bg-slate-50/50 border border-slate-100/50 flex items-center justify-center">
+                                                                <span className="text-slate-300 text-xs">无图片</span>
                                                             </div>
                                                         )}
                                                     </div>
-                                                    <div className="text-xs text-slate-400">
-                                                        ({product.countReview ?? 0} 条评价)
-                                                    </div>
                                                 </td>
                                             );
                                         })}
                                     </tr>
-                                    {/* AI Review Insight (Preview) */}
-                                    <tr>
-                                        <td className="px-6 py-8 font-bold text-slate-900 text-sm sticky left-0 bg-white shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)] z-10">口碑核心亮点</td>
-                                        {results.map((product, idx) => (
-                                            <td key={idx} className="px-6 py-8 border-l border-slate-100/50">
-                                                <p className="text-xs text-slate-500 leading-relaxed line-clamp-4 italic">
-                                                    {product.reviewInsights?.summary || '暂无 AI 评价总结'}
-                                                </p>
-                                            </td>
-                                        ))}
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 ) : !isLoading && (
                     <div className="flex flex-col items-center justify-center h-full text-center">
@@ -342,6 +439,21 @@ export const CompetitorAnalysis: React.FC<CompetitorAnalysisProps> = ({
                     </div>
                 )}
             </div>
+
+            {/* Lightbox Overlay */}
+            {lightboxImage && (
+                <div
+                    className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-200 cursor-pointer"
+                    onClick={() => setLightboxImage(null)}
+                >
+                    <img
+                        src={lightboxImage}
+                        alt="Preview"
+                        className="max-w-[90vw] max-h-[90vh] object-contain rounded-2xl shadow-2xl animate-in zoom-in-90 duration-300 cursor-pointer"
+                        onClick={(e) => { e.stopPropagation(); setLightboxImage(null); }}
+                    />
+                </div>
+            )}
         </div>
     );
 };
